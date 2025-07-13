@@ -53,29 +53,23 @@ markdown
 
 **src/:**
 
-- `etabs_automation.py:` Orchestrates the ETABS model creation.
+- `etabs_automation.py:`Orchestrates the ETABS model creation.
     
--`vision_module.py:`
->Processes images/drawings.
+- `vision_module.py:`Processes images/drawings.
     
--`llm_module.py:`
->Manages LLM requests (Groq, OpenAI, etc.).
+- `llm_module.py:`Manages LLM requests (Groq, OpenAI, etc.).
     
-- >**`geometry_parser.py:`**
->Transforms extracted text/vision data into ETABS-compatible coordinates.
+- `geometry_parser.py:`**Transforms extracted text/vision data into ETABS-compatible coordinates.
     
-- >**`server.py:`**
->Exposes FastAPI endpoints.
+-`server.py:`Exposes FastAPI endpoints.
 
 # 🎛️ Frontend Structure
 
--**Dockerfile:** Defines the frontend runtime.
+- **Dockerfile:** Defines the frontend runtime.
 
 - **src/:**
 
-- >**`etabs_ui.py:`**
-- >Implements the Streamlit UI (input fields, file upload, run button).
+- `etabs_ui.py:`Implements the Streamlit UI (input fields, file upload, run button).
 
-- >**`run_model.py:`**
->Sends user inputs to backend and displays ETABS output/logs.
+- `run_model.py:`Sends user inputs to backend and displays ETABS output/logs.
 
