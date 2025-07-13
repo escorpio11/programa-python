@@ -34,13 +34,13 @@ markdown
 ```
 # ✅ Features
 
-Full ETABS Automation: Programmatically creates grids, slabs, walls, columns, beams, and openings using the ETABS COM API.
+- **Full ETABS Automation:** Programmatically creates grids, slabs, walls, columns, beams, and openings using the ETABS COM API.
 
-LLM Integration: Uses Large Language Models for vision tasks (e.g., interpreting scanned structural drawings) and for language-based extraction of design data from technical documents.
+- **LLM Integration:** Uses Large Language Models for vision tasks (e.g., interpreting scanned structural drawings) and for language-based extraction of design data from technical documents.
 
-Geometric Parsing: Converts extracted data into precise ETABS geometry.
+- **Geometric Parsing:** Converts extracted data into precise ETABS geometry.
 
-Streamlit UI: Provides a simple and intuitive interface to define model parameters, upload input data, and launch automation.
+- **Streamlit UI:** Provides a simple and intuitive interface to define model parameters, upload input data, and launch automation.
 
-Containerized: Uses Docker and Docker Compose for easy deployment and portability.
+- **Containerized:** Uses Docker and Docker Compose for easy deployment and portability.
 
