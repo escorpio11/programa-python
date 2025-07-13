@@ -112,3 +112,25 @@ markdown
 2️⃣ Select building parameters (grids, levels, loads).<br>
 3️⃣ Click "Run Automation" to create ETABS models programmatically.<br>
 4️⃣ Review logs and download ETABS .EDB files.
+
+# 📡 API Endpoints
+- `GET /health:` Health check.
+
+- `POST /run_etabs:` Automates model generation.
+
+- `POST /parse_geometry:` Parses raw geometry data.
+
+- `POST /vision_extract:` Extracts geometry from images.*
+
+# ⚙️ Future Work
+- Add automatic structural analysis reports.
+
+- Integrate reinforcement detailing modules.
+
+- Extend LLM vision to interpret scanned PDFs.
+
+- Deploy as a web service for multi-user teams.
+
+**This project demonstrates how powerful results can be achieved by integrating LLMs, Python, ETABS API, vision modules, and a modern UI into one automated workflow for dynamic structural design.
+
+If you want, I can package this into a README.md or a project proposal PDF — just say yes. 🚀📐**
