@@ -6,7 +6,7 @@ This project is a robust AI-powered automation tool designed to streamline and o
 
 # 📂 Folder Structure
 
-project-root/
+'''project-root/
 │
 ├── backend/
 │   ├── Dockerfile               # Docker configuration for the backend
@@ -28,7 +28,7 @@ project-root/
 │   └── requirements.txt         # Python dependencies for frontend
 │
 ├── README.md                    # Project documentation
-└── docker-compose.yml           # Docker Compose configuration
+└── docker-compose.yml           # Docker Compose configuration'''
 
 # ✅ Features
 
