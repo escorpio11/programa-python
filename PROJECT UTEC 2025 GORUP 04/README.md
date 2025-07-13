@@ -6,7 +6,7 @@ This project is a robust AI-powered automation tool designed to streamline and o
 
 # 📂 Folder Structure
 
-'''plaitext
+```plaitext
 project-root/
 │
 ├── backend/
@@ -29,8 +29,8 @@ project-root/
 │   └── requirements.txt         # Python dependencies for frontend
 │
 ├── README.md                    # Project documentation
-└── docker-compose.yml           # Docker Compose configuration'''
-
+└── docker-compose.yml           # Docker Compose configuration
+markdown
 # ✅ Features
 
 Full ETABS Automation: Programmatically creates grids, slabs, walls, columns, beams, and openings using the ETABS COM API.
