@@ -103,3 +103,7 @@ markdown
     !pip install openai langchain
     !pip install langchain_community
     %pip install Pillow
+
+- **Frontend:** http://localhost:8501
+
+- **Backend (API docs):**https://docs.csiamerica.com/help-files/etabs-api-2016/html/6a9c8a48-232d-761c-5421-1ff5ae019a4c.htm 
