@@ -53,8 +53,7 @@ markdown
 
 **src/:**
 
-- `etabs_automation.py:`
->Orchestrates the ETABS model creation.
+- `etabs_automation.py:` Orchestrates the ETABS model creation.
     
 -`vision_module.py:`
 >Processes images/drawings.
