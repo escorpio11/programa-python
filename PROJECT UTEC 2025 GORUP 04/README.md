@@ -44,3 +44,22 @@ markdown
 
 - **Containerized:** Uses Docker and Docker Compose for easy deployment and portability.
 
+⚙️ Backend Structure
+- **Dockerfile:** Defines the backend runtime.
+
+- **models/:** Pydantic models for grids, frames, walls, loads.
+
+- **prompts/:** Templates for LLM queries (e.g., interpret drawings, extract dimensions).
+
+**src/:**
+
+    etabs_automation.py: Orchestrates the ETABS model creation.
+    
+    vision_module.py: Processes images/drawings.
+    
+    llm_module.py: Manages LLM requests (Groq, OpenAI, etc.).
+    
+    geometry_parser.py: Transforms extracted text/vision data into ETABS-compatible coordinates.
+    
+    server.py: Exposes FastAPI endpoints.
+
