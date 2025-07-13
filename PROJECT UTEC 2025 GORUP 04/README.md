@@ -69,7 +69,7 @@ markdown
 
 - **src/:**
 
->- `etabs_ui.py:`Implements the Streamlit UI (input fields, file upload, run button).
+- >`etabs_ui.py:`Implements the Streamlit UI (input fields, file upload, run button).
 
->- `run_model.py:`Sends user inputs to backend and displays ETABS output/logs.
+- >`run_model.py:`Sends user inputs to backend and displays ETABS output/logs.
 
