@@ -61,7 +61,7 @@ markdown
         
     - `geometry_parser.py:`**Transforms extracted text/vision data into ETABS-compatible coordinates.
         
-    -`server.py:`Exposes FastAPI endpoints.
+    - `server.py:`Exposes FastAPI endpoints.
 
 # 🎛️ Frontend Structure
 
@@ -72,4 +72,29 @@ markdown
     - `etabs_ui.py:`Implements the Streamlit UI (input fields, file upload, run button).
     
     - `run_model.py:`Sends user inputs to backend and displays ETABS output/logs.
+
+# 🔍 Documentation of Main Files
+## Backend
+
+- `etabs_automation.py:` Core logic to create ETABS grids, slabs, walls, columns, and openings.
+
+- `vision_module.py:` Extracts dimensions and geometry from images using LLM vision.
+
+- `llm_module.py:` Handles communication with LLMs for language tasks.
+
+- `geometry_parser.py:` Validates and converts raw geometry into ETABS model elements.
+
+- `server.py:` Defines API routes for automation tasks.
+
+## Frontend
+
+- `etabs_ui.py:` UI for engineers to select options, upload architectural drawings, and launch scripts.
+
+- `run_model.py:` Calls backend API and shows results in real time.
+
+#🚀 Getting Started
+## Prerequisites
+- Docker and Docker Compose installed.
+
+- `.env` file with API keys (e.g., `GROQ_API_KEY`, `ETABS_PATH`).
 
