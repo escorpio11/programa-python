@@ -53,13 +53,13 @@ markdown
 
 **src/:**
 
-- **`etabs_automation.py:`**
+-`etabs_automation.py:`
 >Orchestrates the ETABS model creation.
     
-- >**`vision_module.py:`**
+-`vision_module.py:`
 >Processes images/drawings.
     
-- >**`llm_module.py:`**
+-`llm_module.py:`
 >Manages LLM requests (Groq, OpenAI, etc.).
     
 - >**`geometry_parser.py:`**
