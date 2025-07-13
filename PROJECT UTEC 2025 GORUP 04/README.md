@@ -6,7 +6,8 @@ This project is a robust AI-powered automation tool designed to streamline and o
 
 # 📂 Folder Structure
 
-'''project-root/
+'''plaitext
+project-root/
 │
 ├── backend/
 │   ├── Dockerfile               # Docker configuration for the backend
