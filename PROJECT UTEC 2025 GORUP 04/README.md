@@ -51,17 +51,17 @@ markdown
 
 - **prompts/:** Templates for LLM queries (e.g., interpret drawings, extract dimensions).
 
-**src/:**
+- **src/:**
 
-- `etabs_automation.py:`Orchestrates the ETABS model creation.
-    
-- `vision_module.py:`Processes images/drawings.
-    
-- `llm_module.py:`Manages LLM requests (Groq, OpenAI, etc.).
-    
-- `geometry_parser.py:`**Transforms extracted text/vision data into ETABS-compatible coordinates.
-    
--`server.py:`Exposes FastAPI endpoints.
+    - `etabs_automation.py:`Orchestrates the ETABS model creation.
+        
+    - `vision_module.py:`Processes images/drawings.
+        
+    - `llm_module.py:`Manages LLM requests (Groq, OpenAI, etc.).
+        
+    - `geometry_parser.py:`**Transforms extracted text/vision data into ETABS-compatible coordinates.
+        
+    -`server.py:`Exposes FastAPI endpoints.
 
 # 🎛️ Frontend Structure
 
