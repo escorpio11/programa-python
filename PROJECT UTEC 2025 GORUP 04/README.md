@@ -108,7 +108,7 @@ markdown
 
 - **Backend (API docs):**https://docs.csiamerica.com/help-files/etabs-api-2016/html/6a9c8a48-232d-761c-5421-1ff5ae019a4c.htm
 # 🔗 Usage
-1️⃣ Upload architectural drawings or input structural data.
-2️⃣ Select building parameters (grids, levels, loads).
-3️⃣ Click "Run Automation" to create ETABS models programmatically.
+1️⃣ Upload architectural drawings or input structural data.<br>
+2️⃣ Select building parameters (grids, levels, loads).<br>
+3️⃣ Click "Run Automation" to create ETABS models programmatically.<br>
 4️⃣ Review logs and download ETABS .EDB files.
