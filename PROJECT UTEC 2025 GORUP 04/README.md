@@ -98,3 +98,8 @@ markdown
 
 - `.env` file with API keys (e.g., `GROQ_API_KEY`, `ETABS_PATH`).
 
+## Installations :
+    !pip install langchain langchain-groq
+    !pip install openai langchain
+    !pip install langchain_community
+    %pip install Pillow
