@@ -1,0 +1,12 @@
+{
+  "name": "animacion-estacionamiento",
+  "private": true,
+  "type": "module",
+  "description": "Recorrido 3D del estacionamiento techado (three.js + render headless)",
+  "scripts": {
+    "preparar": "node preparar.mjs",
+    "vistas": "node render_vistas.mjs vistas",
+    "video": "node render_video.mjs"
+  },
+  "dependencies": { "three": "0.160.0", "playwright-core": "1.56.1" }
+}

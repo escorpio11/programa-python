@@ -1,0 +1,145 @@
+<title>Estacionamiento Rodríguez de Mendoza 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=Inter:wght@400;600;700;800&display=swap">
+<style>
+/* Visor de presentación: lienzo 3D a pantalla completa, rótulo de proyecto y panel lateral de vistas.
+   Estética deliberadamente oscura (un solo tema) para que el modelo sea el protagonista. */
+:root {
+  --fondo: #10161e;
+  --panel: rgba(16, 22, 30, 0.86);
+  --borde: rgba(214, 224, 236, 0.14);
+  --texto: #eef2f6;
+  --suave: #a9b6c4;
+  --acento: #f2b705;
+  --azul: #1f5fa8;
+  --display: "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif;
+  --cuerpo: "IBM Plex Sans", "Liberation Sans", Arial, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--fondo); color: var(--texto); font-family: var(--cuerpo); overflow: hidden; }
+#escena { position: fixed; inset: 0; }
+#lienzo { width: 100%; height: 100%; display: block; touch-action: none; }
+#overlay { position: absolute; inset: 0; pointer-events: none; }
+.cabecera { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 16px); left: 16px; display: flex; gap: 12px; align-items: center;
+  padding: 10px 14px 10px 10px; background: var(--panel); border: 1px solid var(--borde); border-radius: 10px; backdrop-filter: blur(6px); max-width: calc(100% - 32px); }
+.cabecera .p { flex: none; width: 40px; height: 40px; border-radius: 8px; background: var(--azul); display: grid; place-items: center;
+  font: 700 24px/1 var(--display); color: #fff; }
+.cabecera h1 { margin: 0; font: 700 19px/1.15 var(--display); letter-spacing: .04em; text-transform: uppercase; text-wrap: balance; }
+.cabecera p { margin: 3px 0 0; font-size: 12.5px; color: var(--suave); }
+.panel { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 16px); right: 16px; width: 264px; max-height: calc(100% - 32px); overflow: auto;
+  background: var(--panel); border: 1px solid var(--borde); border-radius: 12px; padding: 14px; display: grid; gap: 14px; backdrop-filter: blur(6px); }
+.panel h2 { margin: 0 0 6px; font: 600 12px/1 var(--display); letter-spacing: .18em; text-transform: uppercase; color: var(--suave); }
+.tour { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px; border-radius: 9px; border: 0;
+  background: var(--acento); color: #1a1406; font: 700 16px/1 var(--display); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.tour:hover { filter: brightness(1.06); }
+.tour:focus-visible, .vistas button:focus-visible, .conmutador input:focus-visible + span { outline: 2px solid #fff; outline-offset: 2px; }
+.vistas { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.vistas button { padding: 9px 8px; border-radius: 7px; border: 1px solid var(--borde); background: rgba(255,255,255,0.04); color: var(--texto);
+  font: 500 13px/1.1 var(--cuerpo); cursor: pointer; text-align: left; }
+.vistas button:hover { background: rgba(255,255,255,0.09); }
+.vistas button[aria-pressed="true"] { border-color: var(--acento); background: rgba(242,183,5,0.12); }
+.conmutador { display: flex; align-items: center; justify-content: space-between; font-size: 13.5px; padding: 4px 0; }
+.conmutador input { position: absolute; opacity: 0; }
+.conmutador span { width: 38px; height: 22px; border-radius: 11px; background: rgba(255,255,255,0.18); position: relative; flex: none; transition: background .2s; }
+.conmutador span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.conmutador input:checked + span { background: var(--azul); }
+.conmutador input:checked + span::after { transform: translateX(16px); }
+.datos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; margin: 0; }
+.datos div { min-width: 0; }
+.datos dt { font-size: 11px; color: var(--suave); letter-spacing: .06em; text-transform: uppercase; }
+.datos dd { margin: 2px 0 0; font: 600 20px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.nota { font-size: 11.5px; color: var(--suave); line-height: 1.45; margin: 0; }
+.ayuda { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); font-size: 12px;
+  color: var(--suave); background: var(--panel); border: 1px solid var(--borde); padding: 7px 12px; border-radius: 20px; white-space: nowrap; }
+.cargando { position: fixed; inset: 0; display: grid; place-items: center; background: var(--fondo); z-index: 5; font: 600 16px var(--display);
+  letter-spacing: .12em; text-transform: uppercase; color: var(--suave); }
+.salir { position: fixed; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--borde);
+  background: var(--panel); color: var(--texto); font: 600 13px var(--cuerpo); cursor: pointer; }
+.plegar { display: none; }
+@media (max-width: 720px) {
+  .panel { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); right: 12px; left: 12px; width: auto; max-height: 52%; }
+  .panel.cerrado > :not(.plegar) { display: none; }
+  .plegar { display: block; width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--borde); background: transparent; color: var(--texto); font: 600 13px var(--cuerpo); }
+  .cabecera { left: 12px; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+  .cabecera h1 { font-size: 16px; }
+  .ayuda { display: none; }
+  #overlay .rot { max-width: 88% !important; }
+  #overlay .rot .ti { font-size: 22px !important; } #overlay .rot .su { font-size: 13px !important; }
+  #overlay .cartel .h { font-size: 30px !important; } #overlay .datos { flex-wrap: wrap; gap: 14px !important; justify-content: center; }
+  #overlay .datos b { font-size: 24px !important; } #overlay .marca { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) { .conmutador span, .conmutador span::after { transition: none; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<div id="escena"><canvas id="lienzo" aria-label="Modelo 3D del estacionamiento techado"></canvas><div id="overlay"></div></div>
+
+<header class="cabecera">
+  <div class="p" aria-hidden="true">P</div>
+  <div><h1>Estacionamiento techado</h1><p>Jr. Rodríguez de Mendoza · San Nicolás (Mendoza), Amazonas · anteproyecto</p></div>
+</header>
+
+<aside class="panel" id="panel">
+  <button class="plegar" id="plegar" type="button" aria-expanded="true">Ocultar panel</button>
+  <button class="tour" id="tour" type="button">▶ Ver recorrido guiado</button>
+  <section>
+    <h2>Vistas</h2>
+    <div class="vistas" id="vistas">
+      <button type="button" data-v="aerea" aria-pressed="true">Aérea</button>
+      <button type="button" data-v="planta" aria-pressed="false">Planta</button>
+      <button type="button" data-v="esquina" aria-pressed="false">Desde la esquina</button>
+      <button type="button" data-v="ingreso" aria-pressed="false">Ingreso P-1</button>
+      <button type="button" data-v="pasillo" aria-pressed="false">Bajo techo</button>
+      <button type="button" data-v="estructura" aria-pressed="false">Estructura</button>
+    </div>
+  </section>
+  <section>
+    <h2>Mostrar</h2>
+    <label class="conmutador" for="c-techos">Cobertura TR-4 <input id="c-techos" type="checkbox" checked><span></span></label>
+    <label class="conmutador" for="c-autos">Vehículos <input id="c-autos" type="checkbox" checked><span></span></label>
+  </section>
+  <section>
+    <h2>Proyecto</h2>
+    <dl class="datos">
+      <div><dt>Terreno</dt><dd>820 m²</dd></div>
+      <div><dt>Plazas techadas</dt><dd>28</dd></div>
+      <div><dt>Accesibles</dt><dd>2</dd></div>
+      <div><dt>Motos / mototaxis</dt><dd>5 + 2</dd></div>
+      <div><dt>Área techada</dt><dd>414 m²</dd></div>
+      <div><dt>Gálibo libre</dt><dd>2.80 m</dd></div>
+    </dl>
+  </section>
+  <p class="nota">Modelo a escala desde los planos del anteproyecto (lámina A-01). Medidas del terreno tomadas de Google Maps: confirmar con levantamiento topográfico.</p>
+</aside>
+
+<div class="ayuda">Arrastra para girar · rueda o pellizca para acercar · clic derecho para desplazar</div>
+<button class="salir" id="salir" type="button" hidden>✕ Salir del recorrido</button>
+<div class="cargando" id="cargando">Cargando modelo 3D…</div>
+
+<script type="module">
+  await import('./main.js');
+  const APP = window.APP;
+  const $ = (s) => document.querySelector(s);
+  $('#cargando').hidden = true;
+  const panel = $('#panel'), salir = $('#salir');
+  const marcar = (v) => document.querySelectorAll('#vistas button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+  document.querySelectorAll('#vistas button').forEach((b) => b.addEventListener('click', () => { APP.irA(b.dataset.v); marcar(b.dataset.v); }));
+  $('#c-techos').addEventListener('change', (e) => APP.techos(e.target.checked));
+  $('#c-autos').addEventListener('change', (e) => APP.autos(e.target.checked));
+  const extras = [document.querySelector('.cabecera'), document.querySelector('.ayuda')];
+  APP.onFinTour = () => { panel.hidden = false; salir.hidden = true; extras.forEach((e) => { e.hidden = false; }); marcar(''); };
+  $('#tour').addEventListener('click', () => { panel.hidden = true; salir.hidden = false; extras.forEach((e) => { e.hidden = true; }); APP.iniciarTour(); });
+  salir.addEventListener('click', () => APP.detenerTour());
+  $('#plegar').addEventListener('click', (e) => {
+    const cerrado = panel.classList.toggle('cerrado');
+    e.target.textContent = cerrado ? 'Mostrar vistas y datos' : 'Ocultar panel';
+    e.target.setAttribute('aria-expanded', String(!cerrado));
+  });
+</script>
