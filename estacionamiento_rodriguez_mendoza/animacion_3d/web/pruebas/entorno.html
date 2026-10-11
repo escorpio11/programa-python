@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Prueba entorno urbano</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#0e1116}#lienzo{position:absolute;inset:0;width:100%;height:100%;display:block}</style>
+<script type="importmap">
+{ "imports": { "three": "../lib/three.module.js", "three/addons/": "../lib/addons/" } }
+</script>
+</head>
+<body>
+<canvas id="lienzo"></canvas>
+<script type="module">
+// Página de prueba del módulo entorno.js: replica la iluminación de main.js (sol de tarde, cielo, niebla).
+import * as THREE from 'three';
+import { Sky } from 'three/addons/objects/Sky.js';
+import { crearProyecto } from '../estructura3d.js';
+import { crearEntorno } from '../entorno.js';
+
+const qs = new URLSearchParams(location.search);
+const ANCHO = +qs.get('w') || window.innerWidth;
+const ALTO = +qs.get('h') || window.innerHeight;
+const SIN_PROYECTO = qs.get('proyecto') === '0';
+
+const datos = await (await fetch('../escena.json')).json();
+const canvas = document.getElementById('lienzo');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(ANCHO, ALTO, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.92;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, ANCHO / ALTO, 0.1, 3000);
+
+const sky = new Sky();
+sky.scale.setScalar(4000);
+const su = sky.material.uniforms;
+su.turbidity.value = 4.5; su.rayleigh.value = 1.6; su.mieCoefficient.value = 0.004; su.mieDirectionalG.value = 0.82;
+scene.add(sky);
+
+const norte = new THREE.Vector3(datos.meta.norte[0], 0, datos.meta.norte[1]).normalize();
+const oeste = new THREE.Vector3(norte.z, 0, -norte.x);
+const centroLote = (() => { let x = 0, z = 0; datos.lote.forEach((p) => { x += p[0]; z += p[1]; }); return new THREE.Vector3(x / 4, 0, z / 4); })();
+const elevSol = THREE.MathUtils.degToRad(38);
+const dirSol = oeste.clone().multiplyScalar(Math.cos(elevSol) * 0.85).add(norte.clone().multiplyScalar(Math.cos(elevSol) * 0.35));
+dirSol.y = Math.sin(elevSol); dirSol.normalize();
+su.sunPosition.value.copy(dirSol);
+
+const sol = new THREE.DirectionalLight(0xfff1dc, 3.1);
+sol.position.copy(centroLote).add(dirSol.clone().multiplyScalar(120));
+sol.target.position.copy(centroLote);
+sol.castShadow = true;
+sol.shadow.mapSize.set(4096, 4096);
+const sc = sol.shadow.camera;
+sc.left = -55; sc.right = 55; sc.top = 55; sc.bottom = -55; sc.near = 20; sc.far = 260;
+sol.shadow.bias = -0.0004; sol.shadow.normalBias = 0.03; sol.shadow.radius = 3;
+scene.add(sol, sol.target);
+scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x6b5b45, 0.85));
+{
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const skyScene = new THREE.Scene();
+  const sky2 = new Sky(); sky2.scale.setScalar(4000);
+  Object.keys(su).forEach((k) => { if (sky2.material.uniforms[k]) sky2.material.uniforms[k].value = su[k].value; });
+  skyScene.add(sky2);
+  scene.environment = pmrem.fromScene(skyScene, 0.02).texture;
+  scene.environmentIntensity = 0.55;
+}
+scene.fog = new THREE.FogExp2(0xc9d8e6, 0.0011);
+
+let proyecto = null;
+if (!SIN_PROYECTO) { proyecto = crearProyecto(datos); scene.add(proyecto); }
+const t0 = performance.now();
+const entorno = crearEntorno(scene, datos, { renderer, camera });
+const msEntorno = performance.now() - t0;
+
+// Estadísticas del grupo del entorno (triángulos de geometría, mallas, materiales)
+function stats(obj) {
+  let tris = 0, mallas = 0, sombras = 0; const mats = new Set();
+  obj.traverse((o) => {
+    if (!(o.isMesh || o.isLine || o.isPoints) || !o.visible) return;
+    mallas++;
+    const g = o.geometry;
+    const n = g.index ? g.index.count : g.attributes.position.count;
+    const inst = o.isInstancedMesh ? o.count : 1;
+    if (o.isMesh) tris += (n / 3) * inst;
+    if (o.castShadow) sombras++;
+    (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => mats.add(m));
+  });
+  return { tris: Math.round(tris), mallas, sombras, materiales: mats.size };
+}
+
+function vista(pos, objetivo, fov = 40, t = 20) {
+  entorno.actualizar && entorno.actualizar(t);
+  camera.fov = fov;
+  camera.position.set(...pos);
+  camera.lookAt(new THREE.Vector3(...objetivo));
+  camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+}
+
+window.APP = {
+  datos, scene, camera, renderer, vista, centroLote: centroLote.toArray(), entorno,
+  info: () => ({ tris: renderer.info.render.triangles, calls: renderer.info.render.calls, msEntorno: Math.round(msEntorno),
+    entorno: stats(entorno.grupo), proyecto: proyecto ? stats(proyecto) : null }),
+  soloEntorno: (v) => { if (proyecto) proyecto.visible = !v; },
+};
+window.APP.listo = true;
+</script>
+</body>
+</html>
