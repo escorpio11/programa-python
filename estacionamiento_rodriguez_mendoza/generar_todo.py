@@ -5,6 +5,8 @@ Genera todos los entregables del anteproyecto en la carpeta `salida/`:
     Estacionamiento_planta.dxf                         (AutoCAD, metros)
     Modelo_Rentabilidad_Estacionamiento.xlsx           (fórmulas editables)
     Memoria_y_Rentabilidad.pdf                         (memoria + análisis)
+    Alternativas_Uso_Terreno.pdf                       (qué hacer con el terreno: 12 alternativas)
+    Modelo_Alternativas_Uso_Terreno.xlsx               (fórmulas editables de las alternativas)
     vistas_previas/*.png                               (imagen de cada lámina)
 
 Uso:  python3 generar_todo.py
@@ -15,10 +17,12 @@ import sys
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 
+import alternativas
 import estructura
 import exportar_dxf
 import geometria
 import informe
+import informe_alternativas
 import planos
 import rentabilidad
 import dibujo
@@ -44,6 +48,8 @@ def main():
     print(exportar_dxf.exportar(os.path.join(salida, "Estacionamiento_planta.dxf")))
     print(rentabilidad.exportar_xlsx(os.path.join(salida, "Modelo_Rentabilidad_Estacionamiento.xlsx")))
     print(informe.generar(os.path.join(salida, "Memoria_y_Rentabilidad.pdf"), vistas, graf))
+    alternativas.exportar_xlsx(os.path.join(salida, "Modelo_Alternativas_Uso_Terreno.xlsx"))
+    print(informe_alternativas.generar(os.path.join(salida, "Alternativas_Uso_Terreno.pdf"), graf))
 
     r = geometria.resumen()
     print(f"\nPlazas techadas: {r['plazas_total']} ({r['plazas_accesibles']} accesibles) | motos {r['motos']} | "

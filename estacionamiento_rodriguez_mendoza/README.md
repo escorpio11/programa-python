@@ -12,6 +12,8 @@ tomadas en Google Maps (frente 30 m, lado colindante 40 m, fondo 30 m, frente a 
 | `Estacionamiento_planta.dxf` | Planta para AutoCAD (metros, capas de arquitectura y estructura) |
 | `Modelo_Rentabilidad_Estacionamiento.xlsx` | Supuestos editables (celdas amarillas), presupuesto, escenarios, flujo a 20 años, sensibilidad |
 | `Memoria_y_Rentabilidad.pdf` | Memoria descriptiva, tipo de vehículos, estructura, presupuesto y rentabilidad |
+| `Alternativas_Uso_Terreno.pdf` | ¿Qué hacer con el terreno? 12 alternativas comparadas, regla de decisión, umbrales, estrategia por etapas y fuentes |
+| `Modelo_Alternativas_Uso_Terreno.xlsx` | Modelo editable de las 12 alternativas (escenario, rentas, costos y terreno en celdas amarillas) |
 | `vistas_previas/*.png` | Imagen de cada lámina |
 
 ## Resultados principales
@@ -24,6 +26,22 @@ tomadas en Google Maps (frente 30 m, lado colindante 40 m, fondo 30 m, frente a 
 - Inversión estimada **≈ S/ 330 mil** (piso de afirmado) o ≈ S/ 406 mil (losa de concreto).
 - Rentabilidad (escenario base, 18 abonados a S/ 120 + rotación): TIR ≈ 11 % y recuperación ≈ 9 años si lo opera el
   propietario; TIR ≈ 4 % si se contrata un guardián. Se recomienda validar demanda y construir por etapas.
+
+## ¿Qué hacer con el terreno? (`alternativas.py`, `informe_alternativas.py`)
+
+Compara 12 usos del lote con datos de mercado de Mendoza (investigación de oct-2026, revisada en forma adversarial):
+arrendar el lote (J), ceder la esquina en derecho de superficie (L), estacionamientos techado y descubierto (A, B),
+local de esquina con cochera (C1), franja de locales (C), pisos de consultorios o minidepartamentos (E, D), cancha
+techada, local de eventos, terminal de vans y hostal, más la referencia de vender y depositar.
+
+- **Hoy no conviene construir nada grande:** con rentas de S/ 12-18 por m² en el jirón ninguna obra paga el 10 %
+  anual (C1 3.9 %, C 4.6 %; el estacionamiento techado pierde dinero con guardián).
+- **Ganancia presente sin capital:** arrendar el lote o ceder la esquina deja ≈ S/ 697 al mes netos
+  (VAN ≈ S/ 83 mil) y es positivo aun en el escenario pesimista.
+- **Construir por módulos solo con contrato:** esquina con ≥ S/ 1,751 al mes a 5 años; 3 locales con
+  ≥ S/ 19 por m²; cochera con ≥ 13 abonados; pisos superiores fuera de alcance
+  (consultorio ≥ S/ 1,187, minidepartamento ≥ S/ 1,354).
+- **Vender:** conviene si ofrecen más de ≈ S/ 564 por m²; pedir tasación.
 
 ## Cómo regenerar
 
