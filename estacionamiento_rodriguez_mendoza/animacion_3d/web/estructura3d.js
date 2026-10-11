@@ -18,8 +18,8 @@ export function materialesProyecto() {
   const tarr = texTarrajeo([214, 202, 176]); tarr.repeat.set(0.5, 0.5);
   return {
     piso: new THREE.MeshStandardMaterial({ map: concreto, roughness: 0.92, metalness: 0 }),
-    pasillo: new THREE.MeshStandardMaterial({ map: concretoPasillo, roughness: 0.9, metalness: 0 }),
-    adoquin: new THREE.MeshStandardMaterial({ map: ador, roughness: 0.95 }),
+    pasillo: new THREE.MeshStandardMaterial({ map: concretoPasillo, roughness: 0.9, metalness: 0, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    adoquin: new THREE.MeshStandardMaterial({ map: ador, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
     pasto: new THREE.MeshStandardMaterial({ map: pasto, roughness: 1 }),
     muro: new THREE.MeshStandardMaterial({ map: tarr, roughness: 0.95 }),
     zocalo: new THREE.MeshStandardMaterial({ color: 0x5b6f86, roughness: 0.8 }),
@@ -29,8 +29,8 @@ export function materialesProyecto() {
     franjas: new THREE.MeshStandardMaterial({ map: texFranjas(), roughness: 0.6 }),
     correa: new THREE.MeshStandardMaterial({ color: 0xa3aab1, roughness: 0.4, metalness: 0.6 }),
     tensor: new THREE.MeshStandardMaterial({ color: 0x8f969c, roughness: 0.4, metalness: 0.8 }),
-    techoSup: new THREE.MeshStandardMaterial({ color: 0x2c5282, roughness: 0.38, metalness: 0.45, side: THREE.FrontSide }),
-    techoInf: new THREE.MeshStandardMaterial({ color: 0xb7bcc2, roughness: 0.75, metalness: 0.1, side: THREE.BackSide }),
+    techoSup: new THREE.MeshStandardMaterial({ color: 0x2c5282, roughness: 0.5, metalness: 0.3, side: THREE.FrontSide }),
+    techoInf: new THREE.MeshStandardMaterial({ color: 0xdfe2e5, roughness: 0.9, metalness: 0.0, side: THREE.BackSide }),
     fascia: new THREE.MeshStandardMaterial({ color: 0xf2f3f5, roughness: 0.5, metalness: 0.3 }),
     canaleta: new THREE.MeshStandardMaterial({ color: 0xc6ccd2, roughness: 0.35, metalness: 0.75 }),
     pvc: new THREE.MeshStandardMaterial({ color: 0xe8e8e6, roughness: 0.6 }),
@@ -141,8 +141,9 @@ function planchaTR4(esq, dirS, matSup, matInf) {
     const f = Math.min(s / L, 1);
     const a = P00.clone().lerp(P10, f);
     const b = P01.clone().lerp(P11, f);
-    fila0.push(a.x, a.y + h, a.z);
-    fila1.push(b.x, b.y + h, b.z);
+    // 1 cm sobre las correas: evita que su cara superior asome en los valles de la plancha
+    fila0.push(a.x, a.y + h + 0.010, a.z);
+    fila1.push(b.x, b.y + h + 0.010, b.z);
   }
   const n = perfil.length;
   pos.push(...fila0, ...fila1);
@@ -226,6 +227,17 @@ export function crearProyecto(d, mat = materialesProyecto()) {
     const t = barra([p.tope[0] - sx * 0.8, 0.06, p.tope[1] - sz * 0.8], [p.tope[0] + sx * 0.8, 0.06, p.tope[1] + sz * 0.8], 0.15, 0.10);
     topes.push(t);
   }
+  for (const a of d.accesos) {
+    if (a.tipo !== 'porton' || a.texto === 'INGRESO') continue;
+    const c = new THREE.Vector3(a.centro[0], 0, a.centro[1]);
+    const ad = new THREE.Vector3(a.hacia_adentro[0], 0, a.hacia_adentro[1]);
+    const dr = new THREE.Vector3(a.dir[0], 0, a.dir[1]);
+    const l0 = c.clone().addScaledVector(ad, 1.4).addScaledVector(dr, -1.75), l1 = c.clone().addScaledVector(ad, 1.4).addScaledVector(dr, 1.75);
+    lineas.push(barra([l0.x, 0.006, l0.z], [l1.x, 0.006, l1.z], 0.30, 0.004));
+    const pp = c.clone().addScaledVector(ad, 2.9);
+    raiz.add(calco(texTexto('PARE', { ancho: 512, alto: 200, fuente: 'bold 170px Inter, Liberation Sans, Arial', color: '#f3f3ee' }),
+      pp.x, pp.z, 2.4, 0.95, Math.atan2(ad.x, ad.z), 0.012));
+  }
   raiz.add(malla(lineas, mat.lineaBlanca, false));
   if (azules.length) raiz.add(malla(azules, mat.azulAcc, false));
   raiz.add(malla(topes, mat.tope, true));
@@ -280,23 +292,33 @@ export function crearProyecto(d, mat = materialesProyecto()) {
       hoja.add(malla(marcoG, mat.porton));
       const s = a.desliza;
       const inicio = s > 0 ? B.clone() : A.clone();
-      const base = inicio.clone().add(adentro.clone().multiplyScalar(0.12));
+      const fuera = d.cerco.espesor + 0.22;     // libra el pilar de vano y las columnetas del cerco
+      const base = inicio.clone().add(adentro.clone().multiplyScalar(fuera));
       hoja.position.copy(base);
       hoja.rotation.y = ang + (s > 0 ? 0 : Math.PI);
       raiz.add(hoja);
       // riel
-      const r = barra([A.x - dir.x * 3.4 * (s < 0 ? 1 : 0), 0.01, A.z - dir.z * 3.4 * (s < 0 ? 1 : 0)],
-        [B.x + dir.x * 3.4 * (s > 0 ? 1 : 0), 0.01, B.z + dir.z * 3.4 * (s > 0 ? 1 : 0)], 0.06, 0.02);
+      const ox = adentro.x * fuera, oz = adentro.z * fuera;
+      const r = barra([A.x - dir.x * 3.4 * (s < 0 ? 1 : 0) + ox, 0.01, A.z - dir.z * 3.4 * (s < 0 ? 1 : 0) + oz],
+        [B.x + dir.x * 3.4 * (s > 0 ? 1 : 0) + ox, 0.01, B.z + dir.z * 3.4 * (s > 0 ? 1 : 0) + oz], 0.06, 0.02);
       raiz.add(malla([r], mat.marco, false));
       // letrero sobre el portón
-      const color = a.texto === 'INGRESO' ? '#1f8a4c' : '#c0392b';
-      const tl = texTexto(a.texto === 'INGRESO' ? '➜ INGRESO' : 'SALIDA ➜', { ancho: 1024, alto: 220, fondo: color,
-        fuente: 'bold 150px Inter, Liberation Sans, DejaVu Sans, Arial' });
+      const ingreso = a.texto === 'INGRESO';
+      const color = ingreso ? '#1f8a4c' : '#c0392b';
+      const caras = ingreso ? { 1: ['INGRESO', 150] } : { 1: ['SALIDA DE VEHÍCULOS\nNO INGRESAR', 84], [-1]: ['SALIDA', 150] };
+      const cM = A.clone().add(B).multiplyScalar(0.5);
+      const dorso = new THREE.Mesh(new THREE.BoxGeometry(3.05, 0.66, 0.05), mat.marco);
+      dorso.position.set(cM.x, H + 0.62, cM.z);
+      dorso.rotation.y = ang;
+      raiz.add(dorso);
       for (const sg of [1, -1]) {
+        if (!caras[sg]) continue;
+        const [txt, px] = caras[sg];
+        const tl = texTexto(txt, { ancho: 1024, alto: 220, fondo: color, fuente: `bold ${px}px Inter, Liberation Sans, DejaVu Sans, Arial` });
         const cartel = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 0.62), new THREE.MeshStandardMaterial({ map: tl, roughness: 0.5,
           emissive: 0xffffff, emissiveMap: tl, emissiveIntensity: 0.12 }));
         const c = A.clone().add(B).multiplyScalar(0.5);
-        cartel.position.set(c.x - adentro.x * 0.05 * sg, H + 0.62, c.z - adentro.z * 0.05 * sg);
+        cartel.position.set(c.x - adentro.x * 0.03 * sg, H + 0.62, c.z - adentro.z * 0.03 * sg);
         cartel.rotation.y = Math.atan2(-adentro.x * sg, -adentro.z * sg) + 0;
         cartel.lookAt(cartel.position.x - adentro.x * sg, cartel.position.y, cartel.position.z - adentro.z * sg);
         raiz.add(cartel);
@@ -384,7 +406,7 @@ export function crearProyecto(d, mat = materialesProyecto()) {
     const e = pm.ext;
     // bolardos en el lado hacia el pasillo (primer borde)
     for (const f of [0.3, 0.7]) {
-      const x = e[0][0] + (e[3][0] - e[0][0]) * f, z = e[0][1] + (e[3][1] - e[0][1]) * f;
+      const x = e[0][0] + (e[1][0] - e[0][0]) * f, z = e[0][1] + (e[1][1] - e[0][1]) * f;
       const b = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.9, 12), mat.bolardo);
       b.position.set(x, 0.45, z); b.castShadow = true; raiz.add(b);
     }

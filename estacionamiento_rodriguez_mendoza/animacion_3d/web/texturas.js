@@ -34,12 +34,16 @@ export function texConcreto(base = [178, 176, 170], seed = 3) {
   x.fillStyle = `rgb(${base.join(',')})`;
   x.fillRect(0, 0, 512, 512);
   for (let i = 0; i < 40; i++) {
-    const g = x.createRadialGradient(r() * 512, r() * 512, 0, r() * 512, r() * 512, 40 + r() * 120);
-    const d = (r() - 0.5) * 10;
-    g.addColorStop(0, `rgba(${base[0] + d},${base[1] + d},${base[2] + d},0.12)`);
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    x.fillStyle = g;
-    x.fillRect(0, 0, 512, 512);
+    // manchas suaves concéntricas, con el mismo RGB al borde (alfa 0) y repetidas en las 8 vecinas para que la baldosa no tenga costuras
+    const cx = r() * 512, cy = r() * 512, rad = 40 + r() * 120, d = (r() - 0.5) * 10;
+    const col = `${Math.round(base[0] + d)},${Math.round(base[1] + d)},${Math.round(base[2] + d)}`;
+    for (const ox of [-512, 0, 512]) for (const oy of [-512, 0, 512]) {
+      const g = x.createRadialGradient(cx + ox, cy + oy, 0, cx + ox, cy + oy, rad);
+      g.addColorStop(0, `rgba(${col},0.12)`);
+      g.addColorStop(1, `rgba(${col},0)`);
+      x.fillStyle = g;
+      x.fillRect(0, 0, 512, 512);
+    }
   }
   const img = x.getImageData(0, 0, 512, 512);
   for (let i = 0; i < img.data.length; i += 4) {

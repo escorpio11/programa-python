@@ -29,7 +29,7 @@ renderer.setPixelRatio(MODO === 'visor' ? Math.min(window.devicePixelRatio, 2) :
 renderer.setSize(ANCHO, ALTO, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.86;
+renderer.toneMappingExposure = +(qs.get('exp') || 0.95);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = qs.get('pcf') === '1' ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 
@@ -40,8 +40,8 @@ const camera = new THREE.PerspectiveCamera(40, ANCHO / ALTO, 0.3, 2500);
 const sky = new Sky();
 sky.scale.setScalar(4000);
 const su = sky.material.uniforms;
-su.turbidity.value = 4.5;
-su.rayleigh.value = 1.6;
+su.turbidity.value = 2.8;
+su.rayleigh.value = 2.2;
 su.mieCoefficient.value = 0.004;
 su.mieDirectionalG.value = 0.82;
 scene.add(sky);
@@ -73,7 +73,7 @@ sol.shadow.bias = -0.0004;
 sol.shadow.normalBias = 0.03;
 sol.shadow.radius = 3;
 scene.add(sol, sol.target);
-const hemi = new THREE.HemisphereLight(0xcfe3ff, 0x5d5444, 0.42);
+const hemi = new THREE.HemisphereLight(0xe0e7ee, 0x5d5444, 0.42);
 scene.add(hemi);
 
 // Mapa de entorno a partir del cielo (reflejos en autos y metal)
@@ -84,44 +84,22 @@ scene.add(hemi);
   sky2.scale.setScalar(4000);
   Object.keys(su).forEach((k) => { if (sky2.material.uniforms[k]) sky2.material.uniforms[k].value = su[k].value; });
   skyScene.add(sky2);
-  // suelo oscuro en el mapa de entorno: evita que la mitad inferior del cielo ilumine de abajo hacia arriba
-  const sueloEnv = new THREE.Mesh(new THREE.CircleGeometry(3000, 32), new THREE.MeshBasicMaterial({ color: 0x8a877d }));
+  // suelo de tono medio en el mapa de entorno: la mitad inferior no es cielo, pero sí rebota luz bajo los techos
+  const sueloEnv = new THREE.Mesh(new THREE.CircleGeometry(3000, 32), new THREE.MeshBasicMaterial({ color: 0xbdb6a6 }));
   sueloEnv.rotation.x = -Math.PI / 2; sueloEnv.position.y = -2;
   skyScene.add(sueloEnv);
   scene.environment = pmrem.fromScene(skyScene, 0.02).texture;
-  scene.environmentIntensity = 0.38;
 }
-scene.fog = new THREE.FogExp2(0xc4d3e2, 0.0009);
+scene.fog = new THREE.FogExp2(0xbac8d2, 0.0005);
 
 // ---------------------------------------------------------------- contenido
 const proyecto = crearProyecto(datos);
 scene.add(proyecto);
 const entorno = crearEntorno(scene, datos, { renderer, camera });
 
-// Sombra de contacto suave bajo cada vehículo (oclusión ambiental aproximada)
-const texSombra = (() => {
-  const c = document.createElement('canvas'); c.width = c.height = 128;
-  const x = c.getContext('2d');
-  const g = x.createRadialGradient(64, 64, 8, 64, 64, 64);
-  g.addColorStop(0, 'rgba(0,0,0,0.30)'); g.addColorStop(0.55, 'rgba(0,0,0,0.18)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-  x.fillStyle = g; x.fillRect(0, 0, 128, 128);
-  const t = new THREE.CanvasTexture(c); return t;
-})();
-const matSombra = new THREE.MeshBasicMaterial({ map: texSombra, transparent: true, depthWrite: false, polygonOffset: true,
-  polygonOffsetFactor: -6, polygonOffsetUnits: -6 });
-function conSombra(v, tipo) {
-  const d = DIMENSIONES[tipo] || DIMENSIONES.sedan;
-  const s = new THREE.Mesh(new THREE.PlaneGeometry(d.largo * 1.18, d.ancho * 1.35), matSombra);
-  s.rotation.x = -Math.PI / 2;
-  s.position.y = 0.015;
-  s.renderOrder = 1;
-  v.add(s);
-  return v;
-}
-
 // Vehículos estacionados (determinista)
 const azar = rng(20261011);
-const VACIAS = new Set(['04', '09', '13', '17', '22', '27']);
+const VACIAS = new Set(['04', '09', '12', '17', '22', '27']);
 const mezcla = ['sedan', 'pickup', 'suv', 'sedan', 'hatchback', 'pickup', 'van', 'sedan', 'suv', 'pickup'];
 const estacionados = new THREE.Group();
 datos.plazas.forEach((p, i) => {
@@ -130,10 +108,10 @@ datos.plazas.forEach((p, i) => {
   if (p.tipo === 'accesible') tipo = 'suv';
   const dim = DIMENSIONES[tipo];
   const color = COLORES_AUTOS[Math.floor(azar() * COLORES_AUTOS.length)];
-  const v = conSombra(crearVehiculo(tipo, { color, seed: i + 1 }), tipo);
+  const v = crearVehiculo(tipo, { color, seed: i + 1 });
   const [fx, fz] = p.frente;
   const enReversa = azar() < 0.55;
-  const dist = 1.10 - 0.95 + (enReversa ? 1.05 : 0.90) + dim.largo / 2 - 0.15;
+  const dist = 0.40 + dim.largo / 2;          // trasera a 0.40 m del fondo: las ruedas apoyan en el tope de 1.10 m
   v.position.set(p.fondo[0] + fx * dist, 0, p.fondo[1] + fz * dist);
   const hx = enReversa ? fx : -fx, hz = enReversa ? fz : -fz;
   v.rotation.y = Math.atan2(-hz, hx) + (azar() - 0.5) * 0.04;
@@ -143,7 +121,7 @@ datos.plazas.forEach((p, i) => {
 });
 for (const [i, m] of datos.motos.entries()) {
   const color = m.tipo === 'mototaxi' ? (i % 2 ? '#1d4f91' : '#b3261e') : ['#1b1b1b', '#b3261e', '#1d4f91', '#e0e0e0', '#2e6b30'][i % 5];
-  const v = conSombra(crearVehiculo(m.tipo, { color, seed: 100 + i }), m.tipo);
+  const v = crearVehiculo(m.tipo, { color, seed: 100 + i });
   v.position.set(m.centro[0], 0, m.centro[1]);
   v.rotation.y = Math.atan2(-m.dir[1], m.dir[0]);
   estacionados.add(v);
@@ -151,16 +129,56 @@ for (const [i, m] of datos.motos.entries()) {
 scene.add(estacionados);
 
 // Vehículos en movimiento a lo largo del recorrido (P-1 -> P-2)
-const curva = new THREE.CatmullRomCurve3(datos.recorrido.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal', 0.5);
+// el recorrido se prolonga por las calles para que los autos no aparezcan ni desaparezcan a la vista
+const ptsRec = datos.recorrido.map(([x, z]) => new THREE.Vector3(x, 0, z));
+const prolongar = (a, b, d) => b.clone().addScaledVector(b.clone().sub(a).normalize(), d);
+ptsRec.unshift(prolongar(ptsRec[1], ptsRec[0], 80));
+ptsRec.push(prolongar(ptsRec.at(-2), ptsRec.at(-1), 60));
+const curva = new THREE.CatmullRomCurve3(ptsRec, false, 'centripetal', 0.5);
 const largoCurva = curva.getLength();
 const overlay = document.getElementById('overlay');
 const guion = crearGuion({ datos, camera, overlay, modo: MODO, THREE, centroLote, curva, largoCurva });
 const moviles = guion.programa.map((pr, i) => {
-  const v = conSombra(crearVehiculo(pr.tipo, { color: pr.color, seed: 500 + i }), pr.tipo);
+  const v = crearVehiculo(pr.tipo, { color: pr.color, seed: 500 + i });
   v.visible = false;
   scene.add(v);
   return { v, pr };
 });
+
+// Reflejos del cielo: r160 no tiene scene.environmentIntensity, se escala por material (una sola vez cada uno)
+{
+  const hechos = new Set();
+  const esc = (raiz, k) => raiz.traverse((o) => [].concat(o.material || []).forEach((m) => {
+    if (m && 'envMapIntensity' in m && !hechos.has(m)) { hechos.add(m); m.envMapIntensity *= k; }
+  }));
+  esc(estacionados, 0.75);
+  moviles.forEach(({ v }) => esc(v, 0.75));
+  esc(scene, 0.45);
+}
+
+// Cubierta TR-4 translúcida en la toma de planta
+const MT = proyecto.userData.materiales;
+function opacidadTecho(op) {
+  for (const m of [MT.techoSup, MT.techoInf]) {
+    const tr = op < 0.999;
+    if (m.transparent !== tr) { m.transparent = tr; m.depthWrite = !tr; m.needsUpdate = true; }
+    m.opacity = op;
+  }
+}
+
+// Sombra del sol: encuadre ajustado al lote en tomas bajas, amplio en las aéreas
+const dirSolN = dirSol.clone();
+let radioSombra = 55;
+function ajustarSombra() {
+  const R = camera.position.y > 20 ? 140 : 55;
+  if (R === radioSombra) return;
+  radioSombra = R;
+  sc.left = sc.bottom = -R; sc.right = sc.top = R;
+  sc.near = R > 60 ? 50 : 20; sc.far = R > 60 ? 500 : 260;
+  sol.position.copy(centroLote).addScaledVector(dirSolN, R > 60 ? 250 : 120);
+  sol.shadow.normalBias = R > 60 ? 0.08 : 0.03;
+  sc.updateProjectionMatrix();
+}
 
 function moverVehiculos(t) {
   for (const { v, pr } of moviles) {
@@ -179,7 +197,7 @@ function moverVehiculos(t) {
 // ---------------------------------------------------------------- render
 
 // Post-proceso opcional: oclusión ambiental (GTAO) + salida con tone mapping
-const AO = (qs.get('ao') ?? (MODO === 'video' ? '1' : '0')) === '1';
+const AO = (qs.get('ao') ?? '0') === '1';
 let composer = null;
 if (AO) {
   const rt = new THREE.WebGLRenderTarget(ANCHO, ALTO, { samples: AA ? 4 : 0, type: THREE.HalfFloatType });
@@ -201,6 +219,8 @@ function renderEn(t) {
   moverVehiculos(t);
   entorno.actualizar && entorno.actualizar(t);
   guion.aplicar(t);
+  opacidadTecho(guion.opacidadTecho(t));
+  ajustarSombra();
   dibujar();
 }
 
@@ -211,11 +231,13 @@ function vista(pos, objetivo, fov = 40, t = 20) {
   camera.lookAt(new THREE.Vector3(...objetivo));
   camera.updateProjectionMatrix();
   overlay.style.display = 'none';
+  ajustarSombra();
   dibujar();
 }
 
 window.APP = {
   datos, scene, camera, renderer, renderEn, vista, duracion: guion.duracion, centroLote: centroLote.toArray(),
+  moviles: moviles.map((m) => m.v), estacionados, guion, THREE, mover: moverVehiculos,
   info: () => ({ tris: renderer.info.render.triangles, calls: renderer.info.render.calls }),
 };
 
@@ -259,7 +281,7 @@ if (MODO === 'visor') {
   window.APP.iniciarTour = () => { enTour = true; t0 = reloj.getElapsedTime(); controls.enabled = false; overlay.style.display = ''; };
   window.APP.detenerTour = () => {
     if (!enTour) return;
-    enTour = false; overlay.style.display = 'none'; controls.enabled = true;
+    enTour = false; overlay.style.display = 'none'; controls.enabled = true; opacidadTecho(1);
     controls.target.copy(C); window.APP.onFinTour && window.APP.onFinTour();
   };
   window.APP.enTour = () => enTour;
@@ -289,9 +311,10 @@ if (MODO === 'visor') {
       camera.fov = anim.f0 + (anim.f1 - anim.f0) * k; camera.updateProjectionMatrix();
       if (anim.t >= 1) anim = null;
     }
-    moverVehiculos((te % 80) + 4);
+    moverVehiculos((te % guion.duracion) + 4);
     moviles.forEach((m) => { if (m.v.userData.oculto) m.v.visible = false; });
     controls.update();
+    ajustarSombra();
     renderer.render(scene, camera);
   });
 }

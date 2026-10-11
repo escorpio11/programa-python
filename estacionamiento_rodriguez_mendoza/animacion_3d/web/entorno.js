@@ -222,7 +222,7 @@ function mancha(x, W, H, px, py, rad, c0, sx = 1, sy = 1) {
     if (cx + rad * sx < 0 || cx - rad * sx > W || cy + rad * sy < 0 || cy - rad * sy > H) continue;
     x.save(); x.translate(cx, cy); x.scale(sx, sy);
     const g = x.createRadialGradient(0, 0, 0, 0, 0, rad);
-    g.addColorStop(0, c0); g.addColorStop(1, 'rgba(0,0,0,0)');
+    g.addColorStop(0, c0); g.addColorStop(1, c0.replace(/rgba?\(([^,]+),([^,]+),([^,)]+)(,[^)]*)?\)/, 'rgba($1,$2,$3,0)'));
     x.fillStyle = g; x.fillRect(-rad, -rad, 2 * rad, 2 * rad);
     x.restore();
   }
@@ -1756,7 +1756,7 @@ function construirJardin(ctx, J, jd, reg, gbSuelo, extraVeg) {
   const W2 = (a, b) => add(add(P0, mul(u, a)), mul(v, b));
   const H = [W2(a0, 0), W2(a0 + w, 0), W2(a0 + w + kR * d, d), W2(a0, d)];
   reg.agregar(H, 'jardin');
-  const cP = [col('#7fa457'), col('#6e9a4a'), col('#86aa5c'), col('#77a051')];
+  const cP = [col('#7a8c5a'), col('#6d8152'), col('#82915f'), col('#748756')];
   gbSuelo.poly(H.map((p) => [p[0], 0.004, p[1]]), H.map((p) => [p[0], p[1]]), H.map((_, i) => cP[i % 4]), ARRIBA);
   // frente al jirón (con puerta) y frente a la calle lateral
   const g0 = w * 0.3, g1 = g0 + 1.2;
@@ -1803,7 +1803,7 @@ function construirPatio(ctx, Jc, reg, rnd, casas, gbSuelo) {
   const s0 = a0 + w, s1 = Math.max(...patio.map((p) => FL.s(p)));
   cercoReja(Jc, FL.p(s0, 0), FL.p(s1, 0), v);
   // pasto del patio (más verde)
-  const cP = [col('#7fa457'), col('#6e9a4a'), col('#86aa5c'), col('#77a051')];
+  const cP = [col('#7a8c5a'), col('#6d8152'), col('#82915f'), col('#748756')];
   gbSuelo.poly(patio.map((p) => [p[0], 0.004, p[1]]), patio.map((p) => [p[0], p[1]]), patio.map((_, i) => cP[i % 4]), ARRIBA);
   return spec;
 }
@@ -2095,7 +2095,7 @@ function construirVegetacion(ctx, M, grupo, reg, casas, altura, baldiosPts, extr
     const s = 3.5 + rnd() * 2.5;
     const base = escalar(col(elegir(rnd, ['#3f5c36', '#4a683d', '#3a5434', '#52703f'])), 0.85 + rnd() * 0.2);
     const c = mezclar(base, escalar(C_T.lejos, 0.7), neblina(r));
-    L.lejano.push({ x: P[0], y: h - 1.2, z: P[1], s, sy: 0.9 + rnd() * 0.5, rot: rnd() * 6.3, c });
+    L.lejano.push({ x: P[0], y: h - 2.0, z: P[1], s, sy: 0.55 + rnd() * 0.25, rot: rnd() * 6.3, c });
     n++;
   }
   // geometrías e instancias
@@ -2104,7 +2104,7 @@ function construirVegetacion(ctx, M, grupo, reg, casas, altura, baldiosPts, extr
   const gP = geoPalmera(404), gPl = geoPlatano(505), gA = [geoArbusto(606, 1), geoArbusto(606, 0)], gL = geoLejano();
   const agregar = (o) => { if (o) grupo.add(o); };
   for (const i of [0, 1]) {
-    const sombra = i === 0, sufijo = i === 0 ? '-cerca' : '-medio';
+    const sombra = true, sufijo = i === 0 ? '-cerca' : '-medio';
     const troncoCol = (lst, c) => lst.map((it) => ({ ...it, c: escalar(c, 0.9 + ((it.x * 7.3 + it.z * 3.1) % 1 + 1) % 1 * 0.2) }));
     const cT = col('#5a4838');
     agregar(instanciar(gF[i].copa, i ? M.hojasLejos : M.hojas, L.frondoso[i], sombra, 'arboles' + sufijo));
@@ -2345,7 +2345,7 @@ export function crearEntorno(scene, datos, opciones = {}) {
   construirPostes(ctx, Jc, Jm, M, grupo);
   construirVegetacion(ctx, M, grupo, reg, casas.concat(lejanas), alturaMalla, baldiosPts, extraVeg);
   mallas(Jc, M, grupo, true, 'cerca');
-  mallas(Jm, M, grupo, false, 'lejos');
+  mallas(Jm, M, grupo, true, 'lejos');
 
   grupo.userData = { casas: casas.length + lejanas.length, ctx };
   scene.add(grupo);

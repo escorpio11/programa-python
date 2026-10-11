@@ -259,7 +259,7 @@ def recorrido():
     X = _interseccion(g.A + nAB * c_ab, tBA, g.A + nDA * c_da, tAD)
     pts = [g.B + nAB * c_ab - tBA * 8, g.B + nAB * c_ab + tBA * 10, X - tBA * 7, X - tBA * 2.6,
            X + (tAD - tBA) * 0.9, X + tAD * 2.8, X + tAD * 6.5]
-    pts += [m1 + nDA * c_da - tAD * 4.0, m1 + nDA * 1.6 - tAD * 1.2, m1 - nDA * 0.4, m1 - nDA * 2.6]
+    pts += [m1 + nDA * c_da - tAD * 4.0, m1 + nDA * 1.95 - tAD * 1.95, m1 - nDA * 0.4, m1 - nDA * 2.6]
     esq = _interseccion(g.DC.punto(0, dA), g.DC.t, g.BC.punto(0, dA), g.BC.t)
     s_esq = float(np.dot(esq - g.DC.p0, g.DC.t))
     for s in np.arange(5.0, s_esq - 4.5, 3.5):
@@ -268,8 +268,9 @@ def recorrido():
     u_esq = float(np.dot(esq - g.BC.p0, g.BC.t))
     for u in np.arange(u_esq - 7.5, 10.5, -3.5):
         pts.append(g.BC.punto(float(u), dA - 0.4))
-    pts += [m2 - nAB * 2.6 + tAB * 0.3, m2 - nAB * 0.3, m2 + nAB * 1.8, m2 + nAB * c_ab - tAB * 3.5,
-            m2 + nAB * c_ab - tAB * 12, m2 + nAB * c_ab - tAB * 24, X - tBA * 2.0 + tBA * 14]
+    # salida: sigue recto por el pasillo, cruza P-2 en diagonal y gira a la izquierda (hacia B) al carril del jirón
+    pts += [m2 - nAB * 3.15 - tAB * 2.0, m2, m2 + nAB * 2.6 + tAB * 1.5, m2 + nAB * 5.4 + tAB * 4.3,
+            m2 + nAB * 6.45 + tAB * 8.2, m2 + nAB * 6.45 + tAB * 15, m2 + nAB * 6.45 + tAB * 28, m2 + nAB * 6.45 + tAB * 41]
     return [xz(p) for p in pts]
 
 
@@ -314,7 +315,7 @@ def flechas():
     out = []
     for s in (4.0, 13.0):
         out.append(dict(pos=xz(g.DC.punto(s, dA)), dir=[R4(g.DC.t[0]), R4(-g.DC.t[1])]))
-    for u in (22.5, 15.0):
+    for u in (22.5, 15.0, 11.0):
         out.append(dict(pos=xz(g.BC.punto(u, dA)), dir=[R4(-g.BC.t[0]), R4(g.BC.t[1])]))
     return out
 
