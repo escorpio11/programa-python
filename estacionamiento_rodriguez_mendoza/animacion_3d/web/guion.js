@@ -74,7 +74,7 @@ export function crearGuion({ datos, camera, overlay, modo, THREE, centroLote, cu
 
   // 3. Seguimiento del auto por el pasillo: la cámara recorre la misma trayectoria, 10 m detrás y en alto
   const enCurva = (s) => curva.getPointAt(Math.min(Math.max(s / largoCurva, 0), 1));
-  toma(19.5, 31, (f, t) => {
+  toma(19.5, 28, (f, t) => {
     const s = sDe(programa[0], t);
     const p = enCurva(s);
     const pos = enCurva(s - lerp(11, 9.5, f)).setY(lerp(7.2, 6.0, f));
@@ -83,11 +83,11 @@ export function crearGuion({ datos, camera, overlay, modo, THREE, centroLote, cu
   }, { n: '02', titulo: 'Circulación en un solo sentido', sub: 'Pasillos de 6.50 m · 28 plazas techadas de 2.50 × 5.00 m' });
 
   // 4. Bajo la cobertura T-1: travelling a lo largo de la fila A (ritmo de columnas)
-  toma(31, 42, (f) => {
+  toma(28, 42, (f) => {
     const a = colT1[0], b = colT1[3];
     const dirF = b.clone().sub(a).normalize();
     const haciaPasillo = V(-0.9839, 0, 0.1786);
-    const base = a.clone().lerp(b, lerp(-0.08, 0.42, suave(f)));
+    const base = a.clone().lerp(b, lerp(-0.10, 0.50, suave(f)));
     const pos = base.clone().add(haciaPasillo.clone().multiplyScalar(8.3)).setY(2.1);
     const obj = base.clone().add(dirF.clone().multiplyScalar(11)).add(haciaPasillo.clone().multiplyScalar(2.2)).setY(2.3);
     return { pos, obj, fov: 54 };
@@ -122,7 +122,10 @@ export function crearGuion({ datos, camera, overlay, modo, THREE, centroLote, cu
     const a0 = Math.atan2(-0.82, -0.57) - 0.9, a1 = a0 + 0.8;
     const a = lerp(a0, a1, f);
     const r = lerp(60, 85, suave(f)), h = lerp(30, 46, suave(f));
-    return { pos: V(C.x + Math.cos(a) * r, h, C.z + Math.sin(a) * r), obj: V(C.x, 1, C.z), fov: 38 };
+    const pos = V(C.x + Math.cos(a) * r, h, C.z + Math.sin(a) * r);
+    // el objetivo se adelanta para que el proyecto quede en la mitad inferior, bajo la tarjeta de cierre
+    const adelante = V(C.x - pos.x, 0, C.z - pos.z).normalize().multiplyScalar(lerp(4, 22, suave((f - 0.2) / 0.5)));
+    return { pos, obj: V(C.x, 1, C.z).add(adelante), fov: 38 };
   }, null);
 
   const duracion = 84;
@@ -144,8 +147,8 @@ export function crearGuion({ datos, camera, overlay, modo, THREE, centroLote, cu
     #ov .rot .n { font-size:15px; font-weight:700; letter-spacing:.22em; color:#f2b705; }
     #ov .rot .ti { font-size:38px; font-weight:750; margin-top:6px; letter-spacing:-.01em; }
     #ov .rot .su { font-size:20px; margin-top:8px; opacity:.92; line-height:1.35; }
-    #ov .cartel { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; align-items:center;
-      text-align:center; background:radial-gradient(ellipse at center, rgba(8,14,24,.55) 0%, rgba(8,14,24,.15) 70%, rgba(8,14,24,0) 100%); }
+    #ov .cartel { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:flex-start; align-items:center;
+      text-align:center; padding-top:7.5%; background:linear-gradient(180deg, rgba(8,14,24,.72) 0%, rgba(8,14,24,.42) 30%, rgba(8,14,24,0) 52%); }
     #ov .cartel .k { font-size:18px; letter-spacing:.32em; color:#f2b705; font-weight:700; }
     #ov .cartel .h { font-size:66px; font-weight:800; letter-spacing:-.01em; margin-top:14px; text-shadow:0 4px 30px rgba(0,0,0,.45); }
     #ov .cartel .s { font-size:24px; margin-top:12px; opacity:.95; text-shadow:0 2px 14px rgba(0,0,0,.5); }

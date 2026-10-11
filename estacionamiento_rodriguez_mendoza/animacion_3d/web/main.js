@@ -23,14 +23,15 @@ const datos = await (await fetch('./escena.json')).json();
 
 // ---------------------------------------------------------------- renderer
 const canvas = document.getElementById('lienzo');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: MODO !== 'visor' });
+const AA = (qs.get('aa') ?? '1') === '1';
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: AA, preserveDrawingBuffer: MODO !== 'visor' });
 renderer.setPixelRatio(MODO === 'visor' ? Math.min(window.devicePixelRatio, 2) : 1);
 renderer.setSize(ANCHO, ALTO, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.86;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = qs.get('pcf') === '1' ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(40, ANCHO / ALTO, 0.3, 2500);
@@ -64,7 +65,8 @@ const sol = new THREE.DirectionalLight(0xffeccc, 2.7);
 sol.position.copy(centroLote).add(dirSol.clone().multiplyScalar(120));
 sol.target.position.copy(centroLote);
 sol.castShadow = true;
-sol.shadow.mapSize.set(CALIDAD === 'alta' ? 4096 : 2048, CALIDAD === 'alta' ? 4096 : 2048);
+const TS = +(qs.get('sombra') || (MODO === 'visor' ? 2048 : (CALIDAD === 'alta' ? 4096 : 2048)));
+sol.shadow.mapSize.set(TS, TS);
 const sc = sol.shadow.camera;
 sc.left = -55; sc.right = 55; sc.top = 55; sc.bottom = -55; sc.near = 20; sc.far = 260;
 sol.shadow.bias = -0.0004;
@@ -101,7 +103,7 @@ const texSombra = (() => {
   const c = document.createElement('canvas'); c.width = c.height = 128;
   const x = c.getContext('2d');
   const g = x.createRadialGradient(64, 64, 8, 64, 64, 64);
-  g.addColorStop(0, 'rgba(0,0,0,0.55)'); g.addColorStop(0.55, 'rgba(0,0,0,0.32)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  g.addColorStop(0, 'rgba(0,0,0,0.30)'); g.addColorStop(0.55, 'rgba(0,0,0,0.18)'); g.addColorStop(1, 'rgba(0,0,0,0)');
   x.fillStyle = g; x.fillRect(0, 0, 128, 128);
   const t = new THREE.CanvasTexture(c); return t;
 })();
@@ -180,7 +182,7 @@ function moverVehiculos(t) {
 const AO = (qs.get('ao') ?? (MODO === 'video' ? '1' : '0')) === '1';
 let composer = null;
 if (AO) {
-  const rt = new THREE.WebGLRenderTarget(ANCHO, ALTO, { samples: 4, type: THREE.HalfFloatType });
+  const rt = new THREE.WebGLRenderTarget(ANCHO, ALTO, { samples: AA ? 4 : 0, type: THREE.HalfFloatType });
   composer = new EffectComposer(renderer, rt);
   composer.setPixelRatio(1);
   composer.setSize(ANCHO, ALTO);

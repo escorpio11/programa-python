@@ -16,6 +16,10 @@ import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { crearProyecto } from '../estructura3d.js';
 import { crearEntorno } from '../entorno.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const qs = new URLSearchParams(location.search);
 const ANCHO = +qs.get('w') || window.innerWidth;
@@ -29,12 +33,12 @@ renderer.setPixelRatio(1);
 renderer.setSize(ANCHO, ALTO, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.92;
+renderer.toneMappingExposure = 0.86;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(40, ANCHO / ALTO, 0.1, 3000);
+const camera = new THREE.PerspectiveCamera(40, ANCHO / ALTO, 0.3, 2500);
 
 const sky = new Sky();
 sky.scale.setScalar(4000);
@@ -50,7 +54,7 @@ const dirSol = oeste.clone().multiplyScalar(Math.cos(elevSol) * 0.85).add(norte.
 dirSol.y = Math.sin(elevSol); dirSol.normalize();
 su.sunPosition.value.copy(dirSol);
 
-const sol = new THREE.DirectionalLight(0xfff1dc, 3.1);
+const sol = new THREE.DirectionalLight(0xffeccc, 2.7);
 sol.position.copy(centroLote).add(dirSol.clone().multiplyScalar(120));
 sol.target.position.copy(centroLote);
 sol.castShadow = true;
@@ -59,17 +63,20 @@ const sc = sol.shadow.camera;
 sc.left = -55; sc.right = 55; sc.top = 55; sc.bottom = -55; sc.near = 20; sc.far = 260;
 sol.shadow.bias = -0.0004; sol.shadow.normalBias = 0.03; sol.shadow.radius = 3;
 scene.add(sol, sol.target);
-scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x6b5b45, 0.85));
+scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x5d5444, 0.42));
 {
   const pmrem = new THREE.PMREMGenerator(renderer);
   const skyScene = new THREE.Scene();
   const sky2 = new Sky(); sky2.scale.setScalar(4000);
   Object.keys(su).forEach((k) => { if (sky2.material.uniforms[k]) sky2.material.uniforms[k].value = su[k].value; });
   skyScene.add(sky2);
+  const sueloEnv = new THREE.Mesh(new THREE.CircleGeometry(3000, 32), new THREE.MeshBasicMaterial({ color: 0x8a877d }));
+  sueloEnv.rotation.x = -Math.PI / 2; sueloEnv.position.y = -2;
+  skyScene.add(sueloEnv);
   scene.environment = pmrem.fromScene(skyScene, 0.02).texture;
-  scene.environmentIntensity = 0.55;
+  scene.environmentIntensity = 0.38;
 }
-scene.fog = new THREE.FogExp2(0xc9d8e6, 0.0011);
+scene.fog = new THREE.FogExp2(0xc4d3e2, 0.0009);
 
 let proyecto = null;
 if (!SIN_PROYECTO) { proyecto = crearProyecto(datos); scene.add(proyecto); }
@@ -93,13 +100,25 @@ function stats(obj) {
   return { tris: Math.round(tris), mallas, sombras, materiales: mats.size };
 }
 
+let composer = null;
+if (qs.get('ao') === '1') {
+  const rt = new THREE.WebGLRenderTarget(ANCHO, ALTO, { samples: 4, type: THREE.HalfFloatType });
+  composer = new EffectComposer(renderer, rt);
+  composer.setPixelRatio(1); composer.setSize(ANCHO, ALTO);
+  composer.addPass(new RenderPass(scene, camera));
+  const gtao = new GTAOPass(scene, camera, ANCHO, ALTO);
+  gtao.output = GTAOPass.OUTPUT.Default; gtao.blendIntensity = 0.85;
+  gtao.updateGtaoMaterial({ radius: 0.9, distanceExponent: 1.5, thickness: 1.2, scale: 1.0, samples: 16 });
+  gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+  composer.addPass(gtao); composer.addPass(new OutputPass());
+}
 function vista(pos, objetivo, fov = 40, t = 20) {
   entorno.actualizar && entorno.actualizar(t);
   camera.fov = fov;
   camera.position.set(...pos);
   camera.lookAt(new THREE.Vector3(...objetivo));
   camera.updateProjectionMatrix();
-  renderer.render(scene, camera);
+  if (composer) composer.render(); else renderer.render(scene, camera);
 }
 
 window.APP = {

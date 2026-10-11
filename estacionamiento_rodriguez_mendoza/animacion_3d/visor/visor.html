@@ -17,6 +17,7 @@
   color-scheme: dark;
 }
 html, body { height: 100%; }
+[hidden] { display: none !important; }
 body { margin: 0; background: var(--fondo); color: var(--texto); font-family: var(--cuerpo); overflow: hidden; }
 #escena { position: fixed; inset: 0; }
 #lienzo { width: 100%; height: 100%; display: block; touch-action: none; }
@@ -132,8 +133,9 @@ body { margin: 0; background: var(--fondo); color: var(--texto); font-family: va
   document.querySelectorAll('#vistas button').forEach((b) => b.addEventListener('click', () => { APP.irA(b.dataset.v); marcar(b.dataset.v); }));
   $('#c-techos').addEventListener('change', (e) => APP.techos(e.target.checked));
   $('#c-autos').addEventListener('change', (e) => APP.autos(e.target.checked));
-  APP.onFinTour = () => { panel.hidden = false; salir.hidden = true; marcar(''); };
-  $('#tour').addEventListener('click', () => { panel.hidden = true; salir.hidden = false; APP.iniciarTour(); });
+  const extras = [document.querySelector('.cabecera'), document.querySelector('.ayuda')];
+  APP.onFinTour = () => { panel.hidden = false; salir.hidden = true; extras.forEach((e) => { e.hidden = false; }); marcar(''); };
+  $('#tour').addEventListener('click', () => { panel.hidden = true; salir.hidden = false; extras.forEach((e) => { e.hidden = true; }); APP.iniciarTour(); });
   salir.addEventListener('click', () => APP.detenerTour());
   $('#plegar').addEventListener('click', (e) => {
     const cerrado = panel.classList.toggle('cerrado');
