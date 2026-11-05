@@ -150,12 +150,15 @@ PROF_NINOS, PROF_MIN, PROF_MAX = 0.35, 1.20, 1.50
 ANDEN = unary_union([PISCINA.buffer(ANDEN_ANCHO, join_style=2), PATERA.buffer(ANDEN_ANCHO, join_style=2)]).intersection(
     rect_uv(-5, 60, MURO, 60))
 VESTIDORES = rect_uv(3.4, 8.4, MURO, 3.95)         # control de acceso: se entra por el jardín y se sale a la piscina
-VEST_DAMAS = rect_uv(3.4, 5.4, MURO, 3.95)         # vestidor, inodoro, lavatorio y ducha
-VEST_VARONES = rect_uv(5.4, 7.4, MURO, 3.95)       # vestidor, inodoro, urinario, lavatorio y ducha
-CUARTO_MAQ = rect_uv(7.4, 8.4, MURO, 1.95)         # filtro, bomba y tablero de la piscina
-PASO_LIMPIO = rect_uv(7.4, 8.4, 1.95, 3.95)        # salida de los vestidores hacia la ducha y el pediluvio
-DUCHA_EXT = rect_uv(8.55, 9.55, 2.0, 3.2)
-PEDILUVIO = rect_uv(8.6, 11.6, 2.0, 3.2)           # 3.00 × 1.20 m, cloro libre 0.01 %
+# Circulación "sucia → limpia": cada vestidor se entra desde el atrio del jardín (cara de v = 3.95) y se sale al
+# paso limpio (franja junto al lindero), que lleva a la ducha y al pediluvio; el cuarto de máquinas se atiende desde
+# el jardín, sin entrar a la zona de piscina.
+VEST_DAMAS = rect_uv(3.4, 5.4, 1.35, 3.95)         # inodoro, lavatorio, ducha, banca y colgadores
+VEST_VARONES = rect_uv(5.4, 7.4, 1.35, 3.95)       # inodoro, urinario, lavatorio, ducha, banca y colgadores
+CUARTO_MAQ = rect_uv(7.4, 8.4, 1.35, 3.95)         # filtro, bomba, clorador y tablero de la piscina
+PASO_LIMPIO = rect_uv(3.4, 8.4, MURO, 1.35)        # salida de los vestidores hacia la ducha y el pediluvio
+DUCHA_EXT = rect_uv(8.55, 9.55, 0.25, 1.45)
+PEDILUVIO = rect_uv(8.6, 11.6, 0.25, 1.45)         # 3.00 × 1.20 m, cloro libre 0.01 %, desemboca en el andén
 RELAJO = rect_uv(24.2, 29.3, MURO, 5.40)
 V_CERCO_PISCINA = 5.70                              # cerco de vidrio de 1.20 m entre el jardín y la piscina
 U_CERCO_PISCINA = 11.35                             # quiebre del cerco junto al andén de la patera

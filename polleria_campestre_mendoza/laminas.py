@@ -551,10 +551,10 @@ def dibujar_piscina_general(v: Vista, rotular=True, h=1.25):
         v.texto(np.array(dz.PATERA.centroid.coords[0]), f"PATERA\n2.40 × 2.40\nprof. 0.30-0.40", h=1.0,
                 linespacing=1.0)
         for pol, txt in ((dz.VEST_DAMAS, "VEST.\nDAMAS"), (dz.VEST_VARONES, "VEST.\nVARONES"), (dz.CUARTO_MAQ, "MÁQ."),
-                         (dz.PASO_LIMPIO, "PASO")):
+                         (dz.PASO_LIMPIO, "PASO LIMPIO")):
             v.texto(np.array(pol.centroid.coords[0]), txt, h=1.0, linespacing=1.0)
-        v.texto(np.array(dz.PEDILUVIO.centroid.coords[0]) + np.array([0.6, -0.95]), "PEDILUVIO", h=0.95)
-        v.texto(np.array(dz.DUCHA_EXT.centroid.coords[0]) + np.array([0.0, 0.95]), "DUCHA", h=0.95)
+        v.texto(np.array(dz.PEDILUVIO.centroid.coords[0]) + np.array([0.6, 1.0]), "PEDILUVIO", h=0.95)
+        v.texto(np.array(dz.DUCHA_EXT.centroid.coords[0]) + np.array([0.0, 1.0]), "DUCHA", h=0.95)
         v.texto((25.5, 4.55), "ZONA DE\nRELAJO", h=1.15, weight="bold", linespacing=1.0)
         v.texto((19.7, 6.15), "ANDÉN 1.50 m", h=1.0)
         v.texto((12.0, 6.15), "CERCO DE VIDRIO h = 1.20 m", h=1.0, color=AZUL, ha="left")
@@ -813,14 +813,17 @@ def rotular_ambientes(v: Vista, piso, h=1.45):
             v.texto(c - np.array([0, 0.05]), f"{a.poly.area:.1f} m²", h=1.15, z=8, va="top")
 
 
-def ejes_edificio(v: Vista, piso):
+def ejes_edificio(v: Vista, piso, burbujas_der=True):
     ys = [-s_ for s_ in dz.EJES_S]
     xs = [-d_ for d_ in dz.EJES_D]
     x_izq, x_der = -26.9, -9.4
     y_inf, y_sup = -20.6, -3.4
     for y_, lab in zip(ys, ("1", "2", "3")):
         v.linea([(x_izq + 0.9, y_), (x_der - 0.9, y_)], lw="fino", color=GRIS, ls=(0, (12, 2, 2, 2)), z=1)
-        v.marca_eje((x_der, y_), lab, r_mm=3.0, h=2.0)
+        if burbujas_der:
+            v.marca_eje((x_der, y_), lab, r_mm=3.0, h=2.0)
+        else:
+            v.marca_eje((x_izq + 0.2, y_), lab, r_mm=3.0, h=2.0)
     for x_, lab in zip(xs, ("A", "B", "C")):
         v.linea([(x_, y_inf + 0.9), (x_, y_sup - 0.9)], lw="fino", color=GRIS, ls=(0, (12, 2, 2, 2)), z=1)
         v.marca_eje((x_, y_sup), lab, r_mm=3.0, h=2.0)
@@ -1286,6 +1289,669 @@ def lamina_A04(pdf, png_dir):
     h.guardar(pdf, os.path.join(png_dir, "A-04.png") if png_dir else None)
 
 
+# ==========================================================================
+# A-07  Cortes y elevaciones (esc. 1/100)
+# ==========================================================================
+N2 = dz.NPT2
+ALERO, CUMBRERA = dz.H_ALERO, dz.H_CUMBRE
+PERALTE_VIGA = 0.45
+F_CORTE = "#3d3d3d"
+F_VISTO = "#f3f3f3"
+
+
+def _techo_bar_h(d):
+    d0, d1 = 11.8, 18.2
+    m = (d0 + d1) / 2
+    return CUMBRERA - (CUMBRERA - ALERO) * abs(d - m) / (m - d0)
+
+
+def _techo_esc_h(s_):
+    s0, s1 = 13.0, 19.1
+    m = (s0 + s1) / 2
+    return CUMBRERA - (CUMBRERA - ALERO) * abs(s_ - m) / (m - s0)
+
+
+def _suelo(v: Vista, h0, h1):
+    v.poly(box(h0, -0.6, h1, 0.0), fc="#efe8da", ec="none", z=1, hatch="..", hatch_color="#c8b99a")
+    v.linea([(h0, 0.0), (h1, 0.0)], lw="grueso", z=6)
+
+
+def _nivel(v: Vista, h, z, txt, lado=1):
+    q = v.T((h, z))
+    tri = [q, q + np.array([-1.3, 1.6]), q + np.array([1.3, 1.6])]
+    v.ax.add_patch(MplPolygon(tri, closed=True, fc="white", ec="k", lw=LW["fino"], zorder=9))
+    v.ax.plot([q[0] - 1.3, q[0] + 9.0 * lado], [q[1] + 1.6, q[1] + 1.6], color="k", lw=LW["fino"], zorder=9)
+    v.ax.text(q[0] + 1.8 * lado, q[1] + 2.1, txt, fontsize=pt(1.35), ha="left" if lado > 0 else "right",
+              va="bottom", zorder=9)
+
+
+def _zapata(v: Vista, h, lado_z):
+    v.poly(box(h - lado_z / 2, -1.5, h + lado_z / 2, -1.5 + (0.6 if lado_z > 1.6 else 0.5)), fc="#cfcfcf", ec="k",
+           lw="fino", z=3, hatch="..", hatch_color="#8c8c8c")
+    v.poly(box(h - 0.25, -1.0, h + 0.25, -0.1), fc="#cfcfcf", ec="k", lw="fino", z=3)
+
+
+def _columna(v: Vista, h, z1=ALERO, cortada=False):
+    v.poly(box(h - 0.10, -0.1, h + 0.10, z1), fc=F_CORTE if cortada else "#d9d9d9", ec="k", lw="fino", z=4)
+
+
+def _losa(v: Vista, h0, h1, cortada=True, viga=True):
+    v.poly(box(h0, N2 - 0.12, h1, N2), fc=F_CORTE if cortada else "#bdbdbd", ec="k", lw="fino", z=5)
+    if viga:
+        v.poly(box(h0, N2 - 0.12 - 0.26, h1, N2 - 0.12), fc="#e8e8e8", ec="k", lw="fino", z=4.5)
+
+
+def _muro(v: Vista, h, z0, z1, esp=0.15, cortado=True):
+    v.poly(box(h - esp / 2, z0, h + esp / 2, z1), fc=F_CORTE if cortado else F_VISTO, ec="k", lw="fino", z=5)
+
+
+def _baranda(v: Vista, h0, h1, z0=N2):
+    v.poly(box(min(h0, h1), z0, max(h0, h1), z0 + 1.10), fc="#d7ecf7", ec="#4a90c2", lw="fino", z=5, alpha=0.8)
+    v.linea([(h0, z0 + 1.10), (h1, z0 + 1.10)], lw="medio", z=5.1)
+
+
+def _persona(v: Vista, h, z0=0.0, alto=1.70):
+    k = alto / 1.70
+    v.circulo((h, z0 + 1.58 * k), 0.11 * k * v.k, fc="white", ec="k", lw="fino", z=7)
+    v.linea([(h, z0 + 1.45 * k), (h, z0 + 0.85 * k)], lw="fino", z=7)
+    v.linea([(h - 0.18 * k, z0), (h, z0 + 0.85 * k), (h + 0.18 * k, z0)], lw="fino", z=7)
+    v.linea([(h - 0.25 * k, z0 + 1.0 * k), (h, z0 + 1.35 * k), (h + 0.25 * k, z0 + 1.0 * k)], lw="fino", z=7)
+
+
+def _corte_X(h: Hoja, x0, y0):
+    """Corte X-X: plano d = 14.0 mirando hacia la calzada; eje horizontal = s."""
+    v = h.vista(x0, y0, 100, (5.0, 0.0))
+    _suelo(v, 5.0, 19.3)
+    for s_ in dz.EJES_S:
+        _zapata(v, s_, es.ZAPATAS["borde"]["lado"])
+        _columna(v, s_)
+    v.poly(box(dz.EJES_S[0], -0.5, dz.EJES_S[-1], -0.1), fc="#cfcfcf", ec="k", lw="fino", z=3)    # viga de cimentación
+    _losa(v, 5.5, 18.5)
+    for s_ in dz.EJES_S:                                                      # vigas principales cortadas
+        v.poly(box(s_ - 0.09, N2 - 0.12 - PERALTE_VIGA, s_ + 0.09, N2 - 0.12), fc=F_CORTE, ec="k", lw="fino", z=5.5)
+    H1 = N2 - 0.45
+    for s_, z0, z1 in ((7.5, 0, H1), (8.8, 0, H1), (10.0, 0, H1), (15.0, 0, H1), (18.5, 0, H1),
+                       (10.0, N2, ALERO - 0.15), (15.0, N2, ALERO - 0.15), (17.3, N2, ALERO - 0.15),
+                       (18.5, N2, ALERO - 0.15), (7.5, N2, ALERO - 0.15)):
+        _muro(v, s_, z0, z1)
+    # cielo raso del 1.er piso
+    v.linea([(7.5, H1), (18.5, H1)], lw="fino", ls=(0, (4, 2)), z=5)
+    # equipos vistos: hornos, parrilla, campana, chimenea y contrabarra
+    for s0_, s1_, z1_ in ((10.15, 11.65, 1.75), (11.75, 13.25, 1.75), (13.35, 14.45, 0.95), (14.45, 14.95, 0.95)):
+        v.poly(box(s0_, 0.0, s1_, z1_), fc="#e9b98d", ec="k", lw="fino", z=4.8, hatch="////", hatch_color="#a0703f")
+    v.poly(box(10.05, 2.15, 15.0, 2.75), fc="#f2f2f2", ec="k", lw="fino", z=4.8)
+    v.texto((12.5, 2.45), "CAMPANA", h=1.2, z=8)
+    for s0_, s1_ in ((10.4, 11.0), (12.5, 13.1)):
+        v.poly(box(s0_, 1.75, s1_, 9.30), fc="#c9c9c9", ec="k", lw="fino", z=4.9)
+    v.texto((11.6, 9.55), "CHIMENEAS DE LOS HORNOS +9.30", h=1.2, z=8)
+    v.poly(box(10.2, N2, 14.8, N2 + 1.0), fc="#f2f2f2", ec="k", lw="fino", z=4.8)
+    # techo del bar cortado paralelo a la cumbrera
+    zt = _techo_bar_h(14.0)
+    v.poly(box(5.5, zt, 19.1, zt + 0.08), fc=F_CORTE, ec="k", lw="fino", z=6)
+    v.poly(box(5.5, zt - 0.25, 19.1, zt), fc="#e8e8e8", ec="k", lw="fino", z=5.8)
+    # volado de ingreso: baranda
+    _baranda(v, 5.5, 5.62)
+    v.linea([(5.5, N2), (5.5, N2 + 1.10)], lw="medio", z=6)
+    # rótulos de ambientes
+    for txt, s_, z_ in (("SS.HH.\nPERSONAL", 8.15, 1.2), ("ING.\nSERV.", 9.4, 1.2), ("COCINA (HORNOS)", 12.5, 3.0),
+                        ("LAVADO", 16.8, 1.2), ("SS.HH.\nACCESIBLE", 8.75, 5.0), ("BAR", 12.5, 5.5),
+                        ("DEPÓSITO", 16.15, 5.0), ("PASILLO", 17.9, 5.0), ("PORCHE", 6.5, 1.0),
+                        ("VOLADO", 6.5, 4.6)):
+        v.texto((s_, z_), txt, h=1.25, z=8, linespacing=1.0)
+    _persona(v, 6.3)
+    _persona(v, 12.0, N2)
+    xr = 19.6
+    for z_, txt in ((9.30, "+9.30"), (CUMBRERA, f"+{CUMBRERA:.2f}"), (ALERO, f"+{ALERO:.2f}"),
+                    (N2, f"+{N2:.2f}"), (0.0, "±0.00"), (-1.5, "-1.50")):
+        _nivel(v, xr, z_, txt)
+    for s_, lab in zip(dz.EJES_S, ("1", "2", "3")):
+        v.linea([(s_, -1.9), (s_, -2.4)], lw="fino", color=GRIS, z=3)
+        v.marca_eje((s_, -2.75), lab, r_mm=2.2, h=1.5)
+    h.titulo_vista(x0 + 8, y0 - 41, "CORTE X-X", "ESC. 1/100", ancho=30)
+    return v
+
+
+def _corte_Y(h: Hoja, x0, y0):
+    """Corte Y-Y: plano s = 16.6 mirando hacia el ingreso; eje horizontal = x = -d (calzada a la derecha)."""
+    v = h.vista(x0, y0, 100, (-25.2, 0.0))
+    _suelo(v, -25.2, -11.0)
+    for d_ in dz.EJES_D:
+        _zapata(v, -d_, es.ZAPATAS["borde"]["lado"])
+        _columna(v, -d_)
+    v.poly(box(-dz.EJES_D[-1], -0.5, -dz.EJES_D[0], -0.1), fc="#cfcfcf", ec="k", lw="fino", z=3)
+    _losa(v, -24.9, -12.4)
+    for d_ in np.arange(12.4, 24.95, 1.83):                                   # viguetas cortadas
+        v.poly(box(-d_ - 0.07, N2 - 0.12 - 0.26, -d_ + 0.07, N2 - 0.12), fc=F_CORTE, ec="k", lw="fino", z=5.5)
+    H1 = N2 - 0.45
+    for d_, z0, z1 in ((12.4, 0, H1), (14.4, 0, H1), (16.2, 0, H1), (17.9, 0, H1), (20.0, 0, H1), (21.5, 0, H1),
+                       (22.9, 0, H1), (12.4, N2, ALERO - 0.15), (17.9, N2, ALERO - 0.15)):
+        _muro(v, -d_, z0, z1)
+    # escenario (tarima +0.40) y baranda del volado
+    v.poly(box(-23.9, N2, -17.9, N2 + 0.40), fc=F_ESCENARIO, ec="k", lw="medio", z=5.6)
+    _baranda(v, -24.9, -24.78)
+    v.linea([(-24.9, N2), (-24.9, N2 + 1.10)], lw="medio", z=6)
+    # techo del bar (hastial cortado) y techo del escenario cortado cerca de la cumbrera
+    pts = [(-11.8, ALERO), (-15.0, CUMBRERA), (-18.2, ALERO)]
+    v.linea(pts, lw="mgrueso", z=6.5)
+    v.linea([(-11.8, ALERO - 0.25), (-15.0, CUMBRERA - 0.25), (-18.2, ALERO - 0.25)], lw="fino", z=6.4)
+    zt = _techo_esc_h(16.6)
+    v.poly(box(-24.9, zt, -18.2, zt + 0.08), fc=F_CORTE, ec="k", lw="fino", z=6.5)
+    v.linea([(-24.9, ALERO), (-18.2, ALERO)], lw="fino", ls=(0, (4, 2)), z=6)
+    # escalera exterior cortada (tramo 2)
+    v.poly(Polygon([(-12.4, 1.925), (-11.2, 1.925), (-11.2, N2), (-12.4, N2)]).buffer(0), fc="none", ec="none")
+    v.poly(box(-12.4, 0.0, -11.2, 0.05), fc="k", ec="k", lw="fino", z=5)
+    v.linea([(-11.2, 0.0), (-11.2, N2 + 1.1)], lw="fino", color=GRIS, ls=(0, (3, 2)), z=5)
+    v.texto((-11.8, 2.0), "ESC.\nEXT.", h=1.15, z=8, linespacing=1.0)
+    for txt, d_, z_ in (("LAVADO", 13.4, 1.2), ("PREP.", 15.3, 1.2), ("CÁMARA", 17.05, 1.2), ("SS.HH.", 19.0, 1.2),
+                        ("SS.HH.", 20.75, 1.2), ("SS.HH.", 22.2, 1.2), ("PORCHE\nLATERAL", 23.9, 1.2),
+                        ("DEPÓSITO DEL BAR", 15.15, 5.0), ("ESCENARIO +0.40", 20.9, 5.6), ("TERRAZA", 24.4, 5.6)):
+        v.texto((-d_, z_), txt, h=1.25, z=8, linespacing=1.0)
+    for k, d_ in enumerate((19.6, 20.6, 21.6, 22.6)):
+        _persona(v, -d_, N2 + 0.40)
+    _persona(v, -24.0)
+    for d_, lab in zip(dz.EJES_D, ("A", "B", "C")):
+        v.linea([(-d_, -1.9), (-d_, -2.4)], lw="fino", color=GRIS, z=3)
+        v.marca_eje((-d_, -2.75), lab, r_mm=2.2, h=1.5)
+    h.titulo_vista(x0 + 6, y0 - 41, "CORTE Y-Y", "ESC. 1/100", ancho=30)
+    return v
+
+
+def _elev_ingreso(h: Hoja, x0, y0):
+    """Elevación de ingreso (fachada ONO): eje horizontal = d (calzada a la izquierda)."""
+    v = h.vista(x0, y0, 100, (10.9, 0.0))
+    _suelo(v, 10.9, 25.2)
+    for d_ in dz.EJES_D:
+        _columna(v, d_, N2 - 0.12, cortada=False)
+    v.poly(box(12.4, N2 - 0.12 - PERALTE_VIGA, 23.44, N2), fc="#bdbdbd", ec="k", lw="fino", z=5)      # borde del volado
+    _baranda(v, 12.4, 23.44)
+    # fachada del 1.er piso al fondo (vidrio y muro) y puerta de ingreso
+    v.poly(box(12.4, 0.0, 17.9, N2 - 0.6), fc="#efe9dd", ec="k", lw="fino", z=3)
+    v.poly(box(17.9, 0.0, 22.9, N2 - 0.6), fc="#d7ecf7", ec="k", lw="fino", z=3)
+    for d_ in np.arange(17.9, 22.95, 1.0):
+        v.linea([(d_, 0.0), (d_, N2 - 0.6)], lw="fino", color="#4a90c2", z=3.1)
+    v.poly(box(18.4, 0.0, 20.2, 2.4), fc="#bfe0f2", ec="k", lw="medio", z=3.2)
+    # muros y ventanas del 2.º piso (SS.HH.) con el hastial del techo del bar
+    v.poly(box(12.4, N2, 17.9, ALERO - 0.15), fc="#efe9dd", ec="k", lw="fino", z=3)
+    for d0_ in (12.9, 14.6, 16.8):
+        v.poly(box(d0_, N2, d0_ + 0.8, N2 + 2.1), fc="#c8a27a", ec="k", lw="fino", z=3.1)
+    v.poly(Polygon([(11.8, ALERO), (15.0, CUMBRERA), (18.2, ALERO)]), fc="#d9cbb5", ec="k", lw="medio", z=4)
+    v.poly(box(11.8, ALERO - 0.15, 18.2, ALERO), fc="#8c7b63", ec="k", lw="fino", z=4.1)
+    # techo del escenario visto al fondo
+    v.poly(box(18.2, ALERO, 24.9, CUMBRERA), fc="#e6dccb", ec="k", lw="fino", z=2.5)
+    v.linea([(18.2, CUMBRERA), (24.9, CUMBRERA)], lw="medio", z=2.6)
+    # ascensor panorámico
+    v.poly(box(21.6, 0.0, 23.4, N2 + 3.4), fc="#e3f2fa", ec="k", lw="medio", z=5.5, alpha=0.95)
+    for z_ in np.arange(0.0, N2 + 3.4, 1.2):
+        v.linea([(21.6, z_), (23.4, z_)], lw="fino", color="#4a90c2", z=5.6)
+    v.texto((22.5, N2 + 3.75), "ASCENSOR", h=1.2, z=8)
+    # chimeneas y escalera exterior
+    for d0_ in (12.0,):
+        v.poly(box(d0_, _techo_bar_h(12.3), d0_ + 0.6, 9.30), fc="#c9c9c9", ec="k", lw="fino", z=4.2)
+    v.poly(box(11.2, 0.0, 12.4, N2 + 1.1), fc="none", ec="k", lw="fino", z=4.3, hatch="--", hatch_color="#8c8c8c")
+    _persona(v, 19.2)
+    _persona(v, 14.0, N2)
+    v.texto((19.3, 2.75), "INGRESO", h=1.3, weight="bold", z=8)
+    v.texto((15.15, 1.6), "SERVICIOS", h=1.2, z=8)
+    h.titulo_vista(x0 + 2, y0 - 12, "ELEVACIÓN DE INGRESO (FACHADA ONO)", "ESC. 1/100", ancho=72)
+    return v
+
+
+def _elev_lateral(h: Hoja, x0, y0):
+    """Elevación lateral (fachada SSO, hacia el Jr. Rodríguez de Mendoza): eje horizontal = s."""
+    v = h.vista(x0, y0, 100, (5.0, 0.0))
+    _suelo(v, 5.0, 19.4)
+    for s_ in dz.EJES_S:
+        _columna(v, s_, N2 - 0.12, cortada=False)
+    s_ini = 7.4                                     # el volado lateral comienza donde termina el chaflán
+    v.poly(box(5.5, N2 - 0.12 - PERALTE_VIGA, 18.5, N2), fc="#bdbdbd", ec="k", lw="fino", z=5)
+    _baranda(v, 5.5, 18.5)
+    # 1.er piso al fondo: vidrio (hall y escalera), plegable (despacho), muro (SS.HH.)
+    v.poly(box(7.5, 0.0, 12.3, N2 - 0.6), fc="#d7ecf7", ec="k", lw="fino", z=3)
+    v.poly(box(12.3, 0.0, 15.0, N2 - 0.6), fc="#cfe6f4", ec="k", lw="fino", z=3)
+    for s_ in np.arange(12.3, 15.01, 0.45):
+        v.linea([(s_, 0.0), (s_, 2.7)], lw="fino", color="#4a90c2", z=3.1)
+    v.poly(box(15.0, 0.0, 18.5, N2 - 0.6), fc="#efe9dd", ec="k", lw="fino", z=3)
+    # 2.º piso: muro acústico y techo del escenario (hastial)
+    v.poly(Polygon([(13.0, ALERO), (16.05, CUMBRERA), (19.1, ALERO)]), fc="#d9cbb5", ec="k", lw="medio", z=4)
+    v.poly(box(13.0, ALERO - 0.15, 19.1, ALERO), fc="#8c7b63", ec="k", lw="fino", z=4.1)
+    for s_ in (13.0, 18.5):
+        v.poly(box(s_ - 0.1, N2, s_ + 0.1, ALERO - 0.15), fc="#d9d9d9", ec="k", lw="fino", z=4)
+    v.poly(box(14.5, N2, 18.5, N2 + 0.40), fc=F_ESCENARIO, ec="k", lw="fino", z=4.4)
+    # techo del bar visto al fondo
+    v.poly(box(5.5, ALERO, 19.1, CUMBRERA), fc="#e6dccb", ec="k", lw="fino", z=2.5)
+    v.linea([(5.5, CUMBRERA), (19.1, CUMBRERA)], lw="medio", z=2.6)
+    v.poly(box(5.6, 0.0, 7.4, N2 + 3.4), fc="#e3f2fa", ec="k", lw="medio", z=5.5, alpha=0.95)
+    for k, s_ in enumerate((15.3, 16.2, 17.1, 17.9)):
+        _persona(v, s_, N2 + 0.40)
+    _persona(v, 10.0)
+    v.texto((16.5, N2 + 2.6), "ESCENARIO", h=1.4, weight="bold", z=8)
+    v.texto((13.65, 1.6), "DESPACHO", h=1.2, z=8)
+    v.texto((10.0, 2.8), "HALL Y ESCALERA", h=1.2, z=8)
+    h.titulo_vista(x0 + 2, y0 - 12, "ELEVACIÓN LATERAL (FACHADA SSO)", "ESC. 1/100", ancho=66)
+    return v
+
+
+def lamina_A07(pdf, png_dir):
+    h = Hoja("A-07", "CORTES Y ELEVACIONES", "ARQUITECTURA", "1/100", 7, TOTAL_LAMINAS,
+             subtitulo="EDIFICIO CENTRAL DE ESTRUCTURA METÁLICA")
+    _corte_X(h, 14.0, 182.0)
+    _corte_Y(h, 174.0, 182.0)
+    _elev_ingreso(h, 14.0, 42.0)
+    _elev_lateral(h, 166.0, 42.0)
+    x = h.x_franja + 2.5
+    filas = [["Nivel de piso terminado del 1.er piso", "±0.00"], ["Nivel de piso terminado del 2.º piso", f"+{N2:.2f}"],
+             ["Tarima del escenario", f"+{N2 + 0.40:.2f}"], ["Altura libre bajo vigas (1.er piso)", "2.95"],
+             ["Alero de los techos", f"+{ALERO:.2f}"], ["Cumbrera de los techos", f"+{CUMBRERA:.2f}"],
+             ["Remate de las chimeneas", "+9.30"], ["Barandas de la terraza", "1.10"]]
+    yb = h.tabla(x, 281, ["NIVELES Y ALTURAS", "m"], filas, [70, 16], h_fila=3.9, h_txt=1.35, alinear=["l", "r"])
+    acab = [["Estructura", "Acero ASTM A572 / A500, pintura epóxica + esmalte"],
+            ["Entrepiso", "Losa colaborante AD-600, e = 12 cm"],
+            ["Techos", "Panel sándwich termoacústico, color teja"],
+            ["Fachadas 1.er piso", "Ladrillo tarrajeado y mamparas de vidrio"],
+            ["Fachadas 2.º piso", "Fibrocemento con listones de madera"],
+            ["Barandas", "Vidrio laminado 10 mm + pasamanos inox."],
+            ["Porches y terraza", "Piedra o laja / porcelanato exterior"]]
+    yb = h.tabla(x, yb - 7, ["ELEMENTO", "ACABADO / MATERIAL"], acab, [26, 60], h_fila=3.9, h_txt=1.3,
+                 alinear=["l", "l"])
+    notas = [
+        "1. Cortes según las marcas X-X e Y-Y de las láminas A-05 y A-06.",
+        "2. Pórticos arriostrados en X en ambos sentidos (ver E-02); columnas HSS 8x8 desde la zapata hasta el alero.",
+        "3. Las chimeneas de los hornos atraviesan el bar en un ducto cortafuego y rematan 1.00 m sobre la cumbrera.",
+        "4. Techos a dos aguas con pendiente de 34 % (bar) y 36 % (escenario), canaletas y bajadas a jardines.",
+    ]
+    h.notas(yb - 6, "NOTAS", notas, h=1.35, ancho_chars=66)
+    h.guardar(pdf, os.path.join(png_dir, "A-07.png") if png_dir else None)
+
+
+# ==========================================================================
+# E-01  Cimentación  /  E-02  Estructura metálica del entrepiso
+# ==========================================================================
+TIPO_COL = {}
+for _s in dz.EJES_S:
+    for _d in dz.EJES_D:
+        borde_s = _s in (dz.EJES_S[0], dz.EJES_S[-1])
+        borde_d = _d in (dz.EJES_D[0], dz.EJES_D[-1])
+        TIPO_COL[(_s, _d)] = "esquina" if (borde_s and borde_d) else ("borde" if (borde_s or borde_d) else "interior")
+COD_ZAP = {"interior": "Z-1", "borde": "Z-2", "esquina": "Z-3"}
+
+
+def _vista_edificio(h: Hoja):
+    return h.vista(XE0 - 8, YE0, ESC_EDIF, ORIGEN_EDIF)
+
+
+def _ejes_y_columnas(v: Vista):
+    ejes_edificio(v, 1, burbujas_der=False)
+    for s_, d_ in dz.COLUMNAS:
+        c = PL(s_, d_)
+        v.poly(box(c[0] - 0.102, c[1] - 0.102, c[0] + 0.102, c[1] + 0.102), fc="k", ec="k", lw="fino", z=7)
+
+
+def _detalle_zapata(h: Hoja, x0, y0, esc=40):
+    v = h.vista(x0, y0, esc, (0.0, 0.0))
+    zi = es.ZAPATAS["interior"]
+    L_, hz = zi["lado"], zi["h"]
+    v.poly(box(-1.3, -1.75, 1.3, 0.0), fc="#efe8da", ec="none", z=1, hatch="..", hatch_color="#c8b99a")
+    v.linea([(-1.3, 0.0), (1.3, 0.0)], lw="grueso", z=3)
+    v.poly(box(-L_ / 2, -1.6, L_ / 2, -1.5), fc="#d9d9d9", ec="k", lw="fino", z=2)          # solado
+    v.poly(box(-L_ / 2, -1.5, L_ / 2, -1.5 + hz), fc="#cfcfcf", ec="k", lw="medio", z=3, hatch="..",
+           hatch_color="#8c8c8c")
+    v.poly(box(-0.25, -1.5 + hz, 0.25, -0.05), fc="#cfcfcf", ec="k", lw="medio", z=3, hatch="..",
+           hatch_color="#8c8c8c")
+    v.poly(box(-0.2, -0.05, 0.2, -0.025), fc="#777777", ec="k", lw="fino", z=4)               # grout
+    v.poly(box(-0.2, -0.025, 0.2, 0.0), fc="#555555", ec="k", lw="fino", z=4)                 # plancha base
+    v.poly(box(-0.102, 0.0, 0.102, 0.55), fc="#d9d9d9", ec="k", lw="medio", z=4)              # columna HSS
+    for x_ in (-0.15, 0.15):
+        v.linea([(x_, 0.03), (x_, -0.6)], lw="medio", z=4.5)
+        v.linea([(x_ - 0.04, -0.6), (x_ + 0.04, -0.6)], lw="medio", z=4.5)
+    # acero de la zapata (malla inferior) y del pedestal
+    v.linea([(-L_ / 2 + 0.075, -1.425), (L_ / 2 - 0.075, -1.425)], lw="medio", color=ROJO, z=4)
+    for x_ in np.linspace(-L_ / 2 + 0.1, L_ / 2 - 0.1, 9):
+        v.circulo((x_, -1.40), 0.35, fc=ROJO, ec=ROJO, lw="fino", z=4)
+    for x_ in (-0.19, 0.19):
+        v.linea([(x_, -1.42), (x_, -0.1)], lw="medio", color=ROJO, z=4)
+    v.cota((-L_ / 2, -1.6), (L_ / 2, -1.6), offset_mm=5, lado=-1, texto=f"{L_:.2f} (Z-1)", h=1.3)
+    v.cota((L_ / 2, -1.5), (L_ / 2, -1.5 + hz), offset_mm=4, lado=-1, texto=f"{hz:.2f}", h=1.2)
+    v.cota((-L_ / 2, -1.5), (-L_ / 2, 0.0), offset_mm=5, lado=1, texto="Df = 1.50", h=1.2)
+    llam = [((0.0, 0.4), f"Columna {es.COLUMNA['seccion'].nombre}"),
+            ((0.0, -0.012), "PL 400×400×25 + grout 25 mm"),
+            ((0.15, -0.35), "4 pernos Ø 3/4\" L = 0.60 m"),
+            ((0.25, -0.6), "Pedestal 0.50×0.50, 8 Ø 5/8\""),
+            ((0.6, -1.40), "Malla Ø 5/8\" @ 0.20 (2 direcc.)"),
+            ((0.8, -1.55), "Solado e = 0.10 m")]
+    for i, (p_, txt) in enumerate(llam):
+        q = v.T(p_)
+        h.ax.text(q[0] + 1.2, q[1] + 0.6, str(i + 1), fontsize=pt(1.3), weight="bold", zorder=9, color=AZUL)
+        h.ax.add_patch(Circle(q, 0.45, fc=AZUL, zorder=9))
+        h.texto(x0 - 32, y0 - 50 - i * 3.6, f"{i + 1}. {txt}", h=1.25)
+    h.titulo_vista(x0 - 32, y0 + 26, "DETALLE TÍPICO DE ZAPATA Z-1", f"ESC. 1/{esc}", ancho=58)
+
+
+def lamina_E01(pdf, png_dir):
+    h = Hoja("E-01", "CIMENTACIÓN", "ESTRUCTURAS", "INDICADA", 9, TOTAL_LAMINAS,
+             subtitulo="ZAPATAS, PEDESTALES Y VIGAS DE CIMENTACIÓN")
+    v = _vista_edificio(h)
+    v.poly(ed.ENVOLVENTE_1, fc="none", ec=GRIS, lw="fino", z=1)
+    v.poly(ed.LOSA2_L, fc="none", ec=GRIS_CLARO, lw="fino", ls=(0, (6, 2, 1, 2)), z=1)
+    # vigas de cimentación 0.25 × 0.40 entre zapatas
+    for s_ in dz.EJES_S:
+        v.poly(LineString([PL(s_, dz.EJES_D[0]), PL(s_, dz.EJES_D[-1])]).buffer(0.125, cap_style=2), fc="#eeeeee",
+               ec="k", lw="fino", ls=(0, (4, 2)), z=2)
+    for d_ in dz.EJES_D:
+        v.poly(LineString([PL(dz.EJES_S[0], d_), PL(dz.EJES_S[-1], d_)]).buffer(0.125, cap_style=2), fc="#eeeeee",
+               ec="k", lw="fino", ls=(0, (4, 2)), z=2)
+    for (s_, d_), tipo in TIPO_COL.items():
+        c = PL(s_, d_)
+        L_ = es.ZAPATAS[tipo]["lado"]
+        v.poly(box(c[0] - L_ / 2, c[1] - L_ / 2, c[0] + L_ / 2, c[1] + L_ / 2), fc="#f4f4f4", ec="k", lw="medio",
+               ls=(0, (5, 2)), z=3)
+        v.poly(box(c[0] - 0.25, c[1] - 0.25, c[0] + 0.25, c[1] + 0.25), fc="#d9d9d9", ec="k", lw="fino", z=4)
+        v.texto(c + np.array([L_ / 2 - 0.05, L_ / 2 - 0.05]), COD_ZAP[tipo], h=1.4, weight="bold", ha="right",
+                va="top", z=8)
+    v.texto(PL(10.25, dz.EJES_D[0]) + np.array([0.0, 0.0]), "VC-1", h=1.2, z=8, bbox=dict(fc="white", ec="none", pad=0.2))
+    v.texto(PL(dz.EJES_S[0], 15.15), "VC-1", h=1.2, z=8, bbox=dict(fc="white", ec="none", pad=0.2))
+    # foso del ascensor y apoyos de escaleras
+    fos = ed.RL(*ed.ASCENSOR)
+    v.poly(fos, fc="#e8e8e8", ec="k", lw="medio", z=3, hatch="//", hatch_color="#9a9a9a")
+    v.texto(np.array(fos.centroid.coords[0]), "FOSO DE\nASCENSOR\nprof. 1.20", h=1.15, z=8, linespacing=1.0,
+            bbox=dict(fc="white", ec="none", pad=0.2))
+    v.texto(PL(dz.EJES_S[0], dz.EJES_D[2]) + np.array([-0.95, -0.95]), "Z-3c", h=1.2, weight="bold", z=8)
+    for rect, txt in ((ed.RL(10.3, 10.8, 11.1, 12.5), "ZE"),):
+        v.poly(rect, fc="#d9d9d9", ec="k", lw="fino", z=4)
+        v.texto(np.array(rect.centroid.coords[0]) + np.array([0.0, -0.55]), txt, h=1.2, weight="bold", z=8)
+    _ejes_y_columnas(v)
+    marca_norte_local(h, (300, 266))
+    h.titulo_vista(52, 23, "PLANTA DE CIMENTACIÓN", "ESC. 1/75")
+    v.escala_grafica((150, 18), metros=5, paso=1)
+    _detalle_zapata(h, 281, 130)
+    # ---- franja derecha
+    x = h.x_franja + 2.5
+    n_tipo = {t: sum(1 for k, tt in TIPO_COL.items() if tt == t) for t in ("interior", "borde", "esquina")}
+    filas = [[COD_ZAP[t], t, f"{es.ZAPATAS[t]['lado']:.2f} × {es.ZAPATAS[t]['lado']:.2f}",
+              f"{es.ZAPATAS[t]['h']:.2f}", f"{es.ZAPATAS[t]['P']:.0f}", f"{n_tipo[t]}"] for t in ("interior", "borde", "esquina")]
+    yb = h.tabla(x, 281, ["COD.", "TIPO", "B × L (m)", "h (m)", "P (kN)", "CANT."], filas, [10, 15, 19, 12, 15, 15],
+                 h_fila=3.9, h_txt=1.3, alinear=["c", "l", "c", "r", "r", "r"], titulo="CUADRO DE ZAPATAS")
+    esp = [["Concreto zapatas, pedestales, VC", "f'c = 210 kg/cm²"],
+           ["Solado", "f'c = 100 kg/cm², e = 0.10 m"],
+           ["Acero de refuerzo", "fy = 4 200 kg/cm² (ASTM A615 G60)"],
+           ["Recubrimiento zapatas / VC", "7.5 cm / 4.0 cm"],
+           ["Viga de cimentación VC-1", "0.25 × 0.40, 4 Ø 5/8\", est. Ø 3/8\""],
+           ["Pernos de anclaje", "ASTM F1554 Gr. 36, Ø 3/4\", L = 0.60 m"],
+           ["Capacidad portante (supuesta)", f"q adm = {es.Q_ADM / 100:.1f} kg/cm²"]]
+    yb = h.tabla(x, yb - 7, ["ESPECIFICACIÓN", "VALOR"], esp, [40, 46], h_fila=3.9, h_txt=1.3, alinear=["l", "l"])
+    notas = [
+        "1. Predimensionamiento de anteproyecto (E.020, E.030, E.050, E.060, E.090). Antes de construir: estudio de mecánica de suelos (EMS) y cálculo estructural firmado por ingeniero civil colegiado.",
+        "2. Si el EMS da una capacidad menor o suelos expansivos, recalcular las zapatas o usar platea.",
+        "3. ZE: zapata de apoyo de la escalera exterior (0.50 × 1.40 × 0.40 m); la escalera principal se apoya en la viga VC-1 del eje 1. Z-3c: zapata del eje C-1 combinada con el foso del ascensor (según el proveedor).",
+        "4. Cotas de las zapatas centradas en los ejes; nivel de fondo -1.50 m respecto del NPT ±0.00.",
+    ]
+    h.notas(yb - 6, "NOTAS", notas, h=1.35, ancho_chars=66)
+    h.guardar(pdf, os.path.join(png_dir, "E-01.png") if png_dir else None)
+
+
+def _arriostres():
+    """Paños arriostrados en X: (piso, eje, tramo) en coordenadas (s, d)."""
+    S, D = dz.EJES_S, dz.EJES_D
+    return [
+        (1, "3", (S[2], D[0]), (S[2], D[1])), (1, "3", (S[2], D[1]), (S[2], D[2])),
+        (1, "A", (S[1], D[0]), (S[2], D[0])), (1, "C", (S[0], D[2]), (S[1], D[2])),
+        (2, "3", (S[2], D[0]), (S[2], D[1])), (2, "3", (S[2], D[1]), (S[2], D[2])),
+        (2, "A", (S[0], D[0]), (S[1], D[0])), (2, "C", (S[0], D[2]), (S[1], D[2])),
+    ]
+
+
+def lamina_E02(pdf, png_dir):
+    h = Hoja("E-02", "ESTRUCTURA METÁLICA", "ESTRUCTURAS", "INDICADA", 10, TOTAL_LAMINAS,
+             subtitulo="ENTREPISO +3.85, ARRIOSTRES Y PÓRTICO DEL EJE 3")
+    v = _vista_edificio(h)
+    losa = ed.LOSA2_L
+    v.poly(losa, fc="#f7f7f7", ec="k", lw="grueso", z=1)
+    S, D = dz.EJES_S, dz.EJES_D
+    # vigas principales (a lo largo de d, ejes 1-2-3) con volado al jardín lateral
+    for s_ in S:
+        d_fin = 24.9
+        ln = LineString([PL(s_, D[0]), PL(s_, d_fin)]).intersection(losa.buffer(0.01))
+        v.linea(list(ln.coords), lw=0.9 * dib.MM, color=AZUL, z=5)
+        v.texto(PL(s_, 20.4) + np.array([0, 0.28]), f"VP-1 {es.VIGA['seccion'].nombre}", h=1.25, color=AZUL, z=8,
+                va="bottom", bbox=dict(fc="white", ec="none", pad=0.15))
+    # viguetas (a lo largo de s) @ 1.83 m, con volado hacia el ingreso
+    d_vig = [12.4, 14.23, 16.07, 17.9, 19.57, 21.23, 22.9, 23.9, 24.9]
+    for d_ in d_vig:
+        bajo_esc = 17.9 <= d_ <= 23.9
+        for s0_, s1_ in ((5.5, S[1]), (S[1], S[2])):
+            ln = LineString([PL(s0_, d_), PL(s1_, d_)]).intersection(losa.buffer(0.01))
+            if ln.is_empty:
+                continue
+            for parte in getattr(ln, "geoms", [ln]):
+                col = ROJO if (bajo_esc and s0_ == S[1]) else "k"
+                v.linea(list(parte.coords), lw=0.45 * dib.MM, color=col, z=4.5)
+    v.texto(PL(10.3, 15.15), f"VG-1 {es.VIGUETA['seccion'].nombre} @ {es.SEP_VIGUETAS:.2f}", h=1.2, ang=90, z=8,
+            bbox=dict(fc="white", ec="none", pad=0.15))
+    v.texto(PL(15.8, 19.8), f"VG-2 {es.VIGUETA_ESC['seccion'].nombre}\n(bajo el escenario)", h=1.2, ang=90, z=8,
+            color=ROJO, linespacing=1.0, bbox=dict(fc="white", ec="none", pad=0.15))
+    # borde de los volados
+    borde = LineString(list(losa.exterior.coords))
+    v.texto(PL(5.75, 15.0), f"VB {es.VIGA_BORDE.nombre} (borde del volado)", h=1.15, z=8)
+    # abertura de la escalera y caja del ascensor
+    v.poly(ed.RL(8.2, 12.3, 20.3, 22.9), fc="white", ec="k", lw="medio", z=5.5)
+    q = np.asarray(ed.RL(8.2, 12.3, 20.3, 22.9).exterior.coords)[:4]
+    v.linea([q[0], q[2]], lw="fino", z=5.6)
+    v.linea([q[1], q[3]], lw="fino", z=5.6)
+    v.texto(PL(10.25, 21.6), "ABERTURA\nESCALERA", h=1.15, z=8, linespacing=1.0, bbox=dict(fc="white", ec="none", pad=0.15))
+    asc = ed.RL(*ed.ASCENSOR)
+    v.poly(asc, fc="white", ec="k", lw="medio", z=5.5)
+    v.texto(np.array(asc.centroid.coords[0]), "ASC.", h=1.15, z=8)
+    # sentido de la losa colaborante
+    for s_c, d_c in ((10.3, 19.0), (16.0, 14.5)):
+        c = PL(s_c, d_c)
+        v.flecha_simple(c + np.array([-0.0, 0.0]), c + np.array([1.4, 0.0]), lw="fino", cab=1.4, z=8)
+        v.flecha_simple(c, c - np.array([1.4, 0.0]), lw="fino", cab=1.4, z=8)
+    v.texto(PL(16.0, 14.5) + np.array([0, 0.35]), "STEEL DECK AD-600", h=1.1, z=8, va="bottom")
+    # arriostres del 1.er piso (símbolo en planta)
+    for piso, eje, a_, b_ in _arriostres():
+        if piso != 1:
+            continue
+        pa, pb = PL(*a_), PL(*b_)
+        t = (pb - pa) / np.linalg.norm(pb - pa)
+        n = np.array([-t[1], t[0]]) * 0.35
+        v.linea([pa + n, pb - n], lw="medio", color=VERDE, z=6)
+        v.linea([pa - n, pb + n], lw="medio", color=VERDE, z=6)
+    _ejes_y_columnas(v)
+    marca_norte_local(h, (300, 266))
+    h.titulo_vista(52, 23, "PLANTA DE ENTREPISO +3.85", "ESC. 1/75")
+    v.escala_grafica((150, 18), metros=5, paso=1)
+    # ---- pórtico del eje 3 (fachada posterior), esc. 1/100
+    pv = h.vista(249, 60, 200, (-24.9, 0.0))
+    pv.linea([(-24.9, 0.0), (-11.6, 0.0)], lw="grueso", z=3)
+    for d_ in D:
+        pv.poly(box(-d_ - 0.1, 0.0, -d_ + 0.1, ALERO), fc="#d9d9d9", ec="k", lw="fino", z=4)
+    pv.poly(box(-24.9, N2 - 0.45 - 0.12, -12.4, N2), fc="#bdbdbd", ec="k", lw="fino", z=4)
+    for (z0, z1) in ((0.0, N2 - 0.57), (N2, ALERO - 0.2)):
+        for d0_, d1_ in ((D[0], D[1]), (D[1], D[2])):
+            pv.linea([(-d0_, z0), (-d1_, z1)], lw="medio", color=VERDE, z=5)
+            pv.linea([(-d0_, z1), (-d1_, z0)], lw="medio", color=VERDE, z=5)
+    pv.linea([(-11.8, ALERO), (-15.0, CUMBRERA), (-18.2, ALERO)], lw="medio", z=5)
+    pv.linea([(-18.2, ALERO), (-24.9, ALERO)], lw="medio", z=5)
+    for d_, lab in zip(D, ("A", "B", "C")):
+        pv.marca_eje((-d_, -1.6), lab, r_mm=2.0, h=1.3)
+    for z_, txt in ((0.0, "±0.00"), (N2, "+3.85"), (ALERO, "+7.15")):
+        pv.texto((-25.3, z_), txt, h=1.2, ha="right")
+    h.titulo_vista(249, 42, "PÓRTICO ARRIOSTRADO - EJE 3", "ESC. 1/200", ancho=56)
+    # ---- franja derecha
+    x = h.x_franja + 2.5
+    filas = [["Columnas", es.COLUMNA["seccion"].nombre, "ASTM A500 Gr. C"],
+             ["VP-1 vigas principales", es.VIGA["seccion"].nombre, "ASTM A572 Gr. 50"],
+             ["VG-1 viguetas", es.VIGUETA["seccion"].nombre, "ASTM A572 Gr. 50"],
+             ["VG-2 viguetas (escenario)", es.VIGUETA_ESC["seccion"].nombre, "ASTM A572 Gr. 50"],
+             ["VB vigas de borde", es.VIGA_BORDE.nombre, "ASTM A572 Gr. 50"],
+             ["Arriostres en X", es.ARRIOSTRE["seccion"].nombre, "ASTM A500 Gr. C"],
+             ["Vigas de techo", es.VIGA_TECHO.nombre, "ASTM A572 Gr. 50"],
+             ["Correas", "C 150×50×15×2.5", "ASTM A653"],
+             ["Losa", "AD-600 + 12 cm", "f'c 210 kg/cm²"]]
+    yb = h.tabla(x, 281, ["ELEMENTO", "SECCIÓN", "MATERIAL"], filas, [34, 26, 26], h_fila=3.8, h_txt=1.25,
+                 alinear=["l", "l", "l"], titulo="CUADRO DE SECCIONES")
+    filas = [[k, val] for k, val in es.resumen()]
+    import textwrap
+    yb = yb - 8
+    h.texto(x, yb + 1, "PREDIMENSIONAMIENTO (LRFD)", h=2.0, weight="bold", va="bottom")
+    for k, val in filas:
+        for j, linea in enumerate(textwrap.wrap(f"{k}: {val}", 70)):
+            h.texto(x + (0 if j == 0 else 3), yb - 2.5, linea, h=1.25)
+            yb -= 2.6
+        yb -= 0.6
+    notas = [
+        "1. Cargas: muerta de losa 3.55 kPa + tabiquería 0.5 kPa; viva de terraza 4.0 kPa y de escenario 7.5 kPa (E.020), esta última en vigas, columnas y zapatas.",
+        "2. Sismo (E.030): sistema de pórticos arriostrados concéntricos (R = 7), del lado seguro con Z = 0.35 y U = 1.3 hasta confirmar la zonificación vigente.",
+        "3. Conexiones atornilladas ASTM A325 y soldadura E70XX; pintura epóxica de 2 capas y esmalte de acabado.",
+        "4. Arriostres en planta (verde): eje 3 (A-B y B-C), eje A (2-3) y eje C (1-2) en el 1.er piso; en el 2.º piso el del eje A pasa al paño 1-2.",
+    ]
+    h.notas(yb - 4, "NOTAS", notas, h=1.3, ancho_chars=68)
+    h.guardar(pdf, os.path.join(png_dir, "E-02.png") if png_dir else None)
+
+
+# ==========================================================================
+# A-08  Piscina, vestidores y relajo (2.ª etapa)
+# ==========================================================================
+def _vest_detalle(h: Hoja, x0, y0, esc=50):
+    """Planta ampliada de vestidores, ducha y pediluvio (coordenadas u, v)."""
+    v = h.vista(x0, y0, esc, (3.0, -0.4))
+    v.poly(box(3.0, -0.4, 12.2, 0.15), fc="none", ec="none", z=1, hatch="////", hatch_color=GRIS_CLARO)
+    v.linea([(3.0, 0.0), (12.2, 0.0)], lw="mgrueso", z=5)
+    v.linea([(3.0, 0.15), (12.2, 0.15)], lw="fino", z=5)
+    for pol, fc in ((dz.VEST_DAMAS, F_SSHH), (dz.VEST_VARONES, F_SSHH), (dz.CUARTO_MAQ, F_SERV),
+                    (dz.PASO_LIMPIO, F_PAVIMENTO)):
+        v.poly(pol, fc=fc, ec="none", z=2)
+    v.poly(dz.PEDILUVIO, fc=F_AGUA, ec="k", lw="medio", z=3)
+    v.poly(dz.DUCHA_EXT, fc="#e2f4fc", ec="k", lw="medio", z=3.1)
+    v.circulo((9.05, 0.85), 1.4, fc="white", ec="k", lw="fino", z=3.2)
+    v.poly(box(11.6, 0.15, 12.2, 4.0), fc=F_ANDEN, ec="k", lw="fino", z=2)
+    # muros del bloque (0.15) con vanos
+    x0b, y0b, x1b, y1b = dz.VESTIDORES.bounds
+    muros = [LineString([(x0b, y0b), (x0b, y1b)]), LineString([(x0b, y1b), (x1b, y1b)]),
+             LineString([(x1b, y1b), (x1b, y0b)]), LineString([(x0b, 1.35), (x1b, 1.35)]),
+             LineString([(5.4, 1.35), (5.4, 3.95)]), LineString([(7.4, 1.35), (7.4, 3.95)])]
+    vanos_v = [box(4.0, 3.8, 4.8, 4.1), box(6.0, 3.8, 6.8, 4.1), box(7.5, 3.8, 8.3, 4.1),
+               box(4.5, 1.2, 5.2, 1.5), box(6.5, 1.2, 7.2, 1.5), box(8.25, 0.25, 8.55, 1.25)]
+    huecos = unary_union(vanos_v)
+    for m in muros:
+        v.poly(m.buffer(0.075, cap_style=3).difference(huecos), fc=F_MURO, ec="k", lw="fino", z=5)
+    for (a_, b_, lado) in (((4.0, 3.95), (4.8, 3.95), -1), ((6.0, 3.95), (6.8, 3.95), -1),
+                           ((7.5, 3.95), (8.3, 3.95), 1), ((4.5, 1.35), (5.2, 1.35), -1), ((6.5, 1.35), (7.2, 1.35), -1)):
+        pa, pb = np.array(a_), np.array(b_)
+        w = np.linalg.norm(pb - pa)
+        t = (pb - pa) / w
+        n = np.array([-t[1], t[0]]) * lado
+        v.linea([pa, pa + n * w], lw="medio", z=6)
+        _arco(v, pa, w, pb - pa, n * w)
+    # aparatos
+    for x_c in (3.85, 5.85):
+        _inodoro(v, box(x_c - 0.25, 3.2, x_c + 0.25, 3.85))
+        v.linea([(x_c + 0.5, 2.6), (x_c + 0.5, 3.95)], lw="fino", z=5)                    # mampara del inodoro
+        v.poly(box(x_c + 0.95, 1.5, x_c + 1.45, 1.95), fc="white", ec="k", lw="fino", z=6)   # lavatorio
+        v.poly(box(x_c - 0.4, 1.45, x_c + 0.45, 2.3), fc="#e2f4fc", ec="k", lw="fino", z=6)  # ducha
+        v.linea([(x_c - 0.4, 1.45), (x_c + 0.45, 2.3)], lw="fino", z=6.1)
+        v.poly(box(x_c + 1.1, 2.5, x_c + 1.5, 3.7), fc="#e9d8bf", ec="k", lw="fino", z=6)    # banca
+    v.poly(box(7.0, 3.55, 7.3, 3.85), fc="white", ec="k", lw="fino", z=6)                  # urinario
+    v.circulo((7.75, 2.2), 0.25 * 1000 / esc, fc="#dbe8f3", ec="k", lw="fino", z=6)        # filtro
+    v.poly(box(7.55, 2.9, 8.25, 3.3), fc="#cfcfcf", ec="k", lw="fino", z=6)                # bomba
+    for txt, p_ in (("VESTIDOR\nDAMAS", (4.4, 2.75)), ("VESTIDOR\nVARONES", (6.4, 2.75)), ("CUARTO DE\nMÁQUINAS", (7.9, 1.75)),
+                    ("PASO LIMPIO", (5.9, 0.75)), ("DUCHA", (9.05, 1.75)), ("PEDILUVIO 3.00 × 1.20", (10.4, 1.75)),
+                    ("ANDÉN", (11.9, 2.3)), ("ATRIO DE INGRESO (desde el jardín)", (6.0, 5.0))):
+        v.texto(p_, txt, h=1.2, z=8, linespacing=1.0, ang=90 if txt == "ANDÉN" else 0)
+    for a_, b_ in (((3.4, 4.35), (8.4, 4.35)),):
+        v.cota(a_, b_, offset_mm=2, texto="5.00", h=1.2)
+    v.cota((3.4, 0.15), (3.4, 3.95), offset_mm=6, lado=1, texto="3.80", h=1.2)
+    v.flecha_simple((4.4, 4.5), (4.4, 3.4), lw="fino", cab=1.4, z=8)
+    v.flecha_simple((6.4, 4.5), (6.4, 3.4), lw="fino", cab=1.4, z=8)
+    v.flecha_simple((7.6, 0.75), (10.9, 0.75), lw="medio", color=AZUL, cab=1.8, z=8)
+    h.titulo_vista(x0 + 2, y0 - 14, "VESTIDORES, DUCHA Y PEDILUVIO", f"ESC. 1/{esc}", ancho=68)
+
+
+def _corte_piscina(h: Hoja, x0, y0, esc=75):
+    """Corte longitudinal por v = 3.0 (patera y piscina de adultos)."""
+    v = h.vista(x0, y0, esc, (12.0, -2.2))
+    u0p, u1p = dz.PATERA.bounds[0], dz.PATERA.bounds[2]
+    u0, u1 = dz.PISCINA.bounds[0], dz.PISCINA.bounds[2]
+    e = 0.20
+    v.poly(box(12.0, -2.0, 24.5, 0.0), fc="#efe8da", ec="none", z=1, hatch="..", hatch_color="#c8b99a")
+    # patera
+    v.poly(box(u0p - e, -0.40 - e, u1p + e, 0.0), fc="#cfcfcf", ec="k", lw="medio", z=2, hatch="..", hatch_color="#8c8c8c")
+    v.poly(Polygon([(u0p, 0.0), (u0p, -0.30), (u1p, -0.40), (u1p, 0.0)]), fc=F_AGUA, ec="k", lw="fino", z=3)
+    # piscina de adultos (fondo inclinado 1.20 -> 1.50)
+    v.poly(Polygon([(u0 - e, 0.0), (u0 - e, -1.20 - e), (u1 + e, -1.50 - e), (u1 + e, 0.0)]), fc="#cfcfcf", ec="k",
+           lw="medio", z=2, hatch="..", hatch_color="#8c8c8c")
+    v.poly(Polygon([(u0, 0.0), (u0, -1.20), (u1, -1.50), (u1, 0.0)]), fc=F_AGUA, ec="k", lw="fino", z=3)
+    for k in range(4):                                                      # gradas de ingreso
+        v.poly(box(u0, -0.30 * (k + 1), u0 + 0.30 * (4 - k), -0.30 * k), fc="#e8f6fc", ec="k", lw="fino", z=3.5)
+    v.linea([(u0 - 0.05, -0.08), (u1 + 0.05, -0.08)], lw="fino", color="#4a90c2", ls=(0, (6, 3)), z=4)
+    v.linea([(12.0, 0.0), (24.5, 0.0)], lw="grueso", z=5)
+    v.poly(box(u1 - 0.6, 0.0, u1 - 0.1, 1.0), fc="none", ec="k", lw="fino", z=5)            # escalerilla inox
+    for xx, zz, txt in ((u0p + 1.2, -0.62, "PATERA 0.30-0.40"), (u0 + 3.0, -1.6, "PISCINA 1.20 → 1.50"),
+                        (12.6, 0.35, "ANDÉN"), (u1 + 0.75, 0.35, "ANDÉN")):
+        v.texto((xx, zz), txt, h=1.25, z=8)
+    _persona(v, 19.5, -1.35)
+    _persona(v, 14.3, -0.37, alto=1.1)
+    v.cota((u0, -1.20), (u0, 0.0), offset_mm=4, lado=1, texto="1.20", h=1.2)
+    v.cota((u1, -1.50), (u1, 0.0), offset_mm=4, lado=-1, texto="1.50", h=1.2)
+    v.cota((u0, 0.0), (u1, 0.0), offset_mm=7, texto="6.00", h=1.2)
+    v.cota((u0p, 0.0), (u1p, 0.0), offset_mm=7, texto="2.40", h=1.2)
+    h.titulo_vista(x0 + 2, y0 - 30, "CORTE LONGITUDINAL: PATERA Y PISCINA", f"ESC. 1/{esc}", ancho=74)
+
+
+def lamina_A08(pdf, png_dir):
+    h = Hoja("A-08", "PISCINA, VESTIDORES Y RELAJO", "ARQUITECTURA", "INDICADA", 8, TOTAL_LAMINAS,
+             subtitulo="2.ª ETAPA (D.S. 007-2003-SA)")
+    v = h.vista(16.0, 182.0, 100, (2.6, -0.6))
+    vis = box(2.6, -0.6, 30.6, 8.6)
+    v.poly(jardines(2).intersection(vis), fc=F_JARDIN, ec="none", z=1)
+    v.poly(dz.caminos_poly(2).intersection(vis), fc=F_PAVIMENTO, ec="#9c8a63", lw="fino", z=1.5)
+    v.poly(dz.EDIFICIO.intersection(vis), fc=F_EDIF, ec="k", lw="mgrueso", z=2)
+    v.poly(dz.PORCHE.intersection(vis), fc=F_PAVIMENTO, ec="none", z=1.8)
+    v.poly(dz.GARAJE.intersection(vis), fc=F_EXIST, ec="k", lw="grueso", z=2, hatch="xx", hatch_color="#b9b2a6")
+    dibujar_piscina_general(v, rotular=True, h=1.25)
+    for a in dz.SOMBRILLAS_E2_RELAJO:
+        dibujar_sombrilla(v, a, rotulo=True, muebles=False, h=1.2)
+    for arb in dz.ARBOLES:
+        if Point(arb["p"]).within(vis):
+            dibujar_arbol(v, arb)
+    anillo = dz.LOTE.difference(dz.INTERIOR).intersection(vis)
+    v.poly(anillo, fc="#8f8f8f", ec="none", z=4)
+    v.cota((dz.PISCINA.bounds[0], dz.PISCINA.bounds[3]), (dz.PISCINA.bounds[2], dz.PISCINA.bounds[3]), offset_mm=3,
+           texto="6.00", h=1.3)
+    v.cota((dz.PISCINA.bounds[2], dz.PISCINA.bounds[1]), (dz.PISCINA.bounds[2], dz.PISCINA.bounds[3]), offset_mm=3,
+           lado=-1, texto="3.50", h=1.3)
+    v.cota((dz.PATERA.bounds[0], dz.PATERA.bounds[3]), (dz.PATERA.bounds[2], dz.PATERA.bounds[3]), offset_mm=3,
+           texto="2.40", h=1.3)
+    v.texto((19.7, 8.0), "EDIFICIO CENTRAL", h=1.5, weight="bold", z=8)
+    v.texto((6.0, 6.8), "JARDÍN LATERAL", h=1.4, weight="bold", color=VERDE, z=8)
+    v.linea([(19.7, 3.0), (19.7, 3.0)], lw="fino")
+    h.titulo_vista(18, 168, "PLANTA DE LA ZONA DE PISCINA", "ESC. 1/100", ancho=70)
+    _corte_piscina(h, 148.0, 122.0)
+    _vest_detalle(h, 16.0, 66.0, esc=75)
+    # ---- franja derecha
+    x = h.x_franja + 2.5
+    vol = dz.PISCINA.area * (dz.PROF_MIN + dz.PROF_MAX) / 2 + dz.PATERA.area * 0.35
+    filas = [["Piscina de adultos (6.00 × 3.50 m)", f"{dz.PISCINA.area:.1f} m²"],
+             ["Patera para niños (2.40 × 2.40 m)", f"{dz.PATERA.area:.1f} m²"],
+             ["Volumen de agua total", f"{vol:.1f} m³"],
+             ["Recirculación mínima (3 veces/día)", f"{vol * 3 / 24:.1f} m³/h"],
+             ["Aforo de bañistas (2.0 m²/bañista)", f"{(dz.PISCINA.area + dz.PATERA.area) / 2:.0f} pers."],
+             ["Andén perimetral", "1.50 m"],
+             ["Vestidores damas / varones", f"{dz.VEST_DAMAS.area:.1f} / {dz.VEST_VARONES.area:.1f} m²"],
+             ["Pediluvio", "3.00 × 1.20 m"],
+             ["Zona de relajo", f"{dz.RELAJO.area:.1f} m²"]]
+    yb = h.tabla(x, 281, ["DATOS DE LA PISCINA", ""], filas, [56, 30], h_fila=3.9, h_txt=1.3, alinear=["l", "r"])
+    notas = [
+        "1. Recorrido obligatorio: atrio → vestidor → paso limpio → ducha → pediluvio → andén (D.S. 007-2003-SA y R.M. 213-2024 de la DIGESA, a confirmar).",
+        "2. Cerco de vidrio templado de 1.20 m con puerta de cierre automático; la patera queda separada del vaso de adultos.",
+        "3. Pisos antideslizantes, bordes redondeados, profundidades rotuladas en el borde y escalerilla de acero inoxidable.",
+        "4. Equipo: filtro de arena, bomba, clorador y tablero en el cuarto de máquinas (acceso desde el jardín); cloro libre 0.4-1.0 ppm, pH 7.2-7.8.",
+        "5. Salvavidas o vigilante durante el horario de uso, botiquín y teléfono; autorización sanitaria de la DIRESA Amazonas antes de abrir.",
+        "6. Zona de relajo: 3 camillas, 2 hamacas y la sombrilla S6 trasladada del jardín posterior.",
+    ]
+    h.notas(yb - 6, "NOTAS", notas, h=1.35, ancho_chars=66)
+    h.guardar(pdf, os.path.join(png_dir, "A-08.png") if png_dir else None)
+
+
 def generar(salida_dir, png_dir=None, solo=None):
     os.makedirs(salida_dir, exist_ok=True)
     if png_dir:
@@ -1298,6 +1964,10 @@ def generar(salida_dir, png_dir=None, solo=None):
         ("A-04", lambda p: lamina_A04(p, png_dir)),
         ("A-05", lambda p: lamina_planta(p, png_dir, 1)),
         ("A-06", lambda p: lamina_planta(p, png_dir, 2)),
+        ("A-07", lambda p: lamina_A07(p, png_dir)),
+        ("A-08", lambda p: lamina_A08(p, png_dir)),
+        ("E-01", lambda p: lamina_E01(p, png_dir)),
+        ("E-02", lambda p: lamina_E02(p, png_dir)),
     ]
     with PdfPages(ruta) as pdf:
         for cod, fn in laminas:
