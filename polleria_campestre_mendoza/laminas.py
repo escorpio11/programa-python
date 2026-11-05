@@ -965,6 +965,327 @@ def lamina_planta(pdf, png_dir, piso):
     h.guardar(pdf, os.path.join(png_dir, f"{codigo}.png") if png_dir else None)
 
 
+# ==========================================================================
+# A-03  Circulaciones y evacuación
+# ==========================================================================
+C_VEH = "#1f4e79"
+C_PEA = "#2e7d32"
+C_SERV = "#d35400"
+C_EVAC = "#c0392b"
+
+
+def _flecha_ruta(v: Vista, pts, color, lw=0.55, ls="-", cab=2.2, z=9):
+    q = [np.asarray(p, float) for p in pts]
+    v.linea(q, lw=lw * dib.MM, color=color, ls=ls, z=z)
+    v.flecha_simple(q[-2] + (q[-1] - q[-2]) * 0.6, q[-1], color=color, lw="grueso", cab=cab, z=z + 0.1)
+
+
+def base_tenue(v: Vista, etapa=1):
+    dibujar_superficies(v, etapa)
+    dibujar_plazas(v)
+    dibujar_existentes(v, h=1.3)
+    dibujar_edificio_general(v, rotular=False)
+    for a in dz.SOMBRILLAS + (dz.SOMBRILLAS_E1_SUR if etapa == 1 else dz.SOMBRILLAS_E2_RELAJO):
+        dibujar_sombrilla(v, a, rotulo=False)
+    if etapa >= 2:
+        dibujar_piscina_general(v, rotular=False)
+    for arb in dz.ARBOLES:
+        if arb.get("etapa", 1) <= etapa:
+            dibujar_arbol(v, arb)
+    dibujar_cercos(v)
+    # velo blanco (solo dentro del área de dibujo) para que resalten las rutas
+    x_max = v.h.x_franja - 0.5
+    p0 = v.o + (np.array([dib.MARGEN + 0.5, dib.MARGEN + 0.5]) - np.array([v.x0, v.y0])) / v.k
+    p1 = v.o + (np.array([x_max, dib.ALTO_HOJA - dib.MARGEN - 0.5]) - np.array([v.x0, v.y0])) / v.k
+    v.poly(box(p0[0], p0[1], p1[0], p1[1]), fc="white", ec="none", z=8, alpha=0.45)
+
+
+def longitud(pts):
+    q = [np.asarray(p, float) for p in pts]
+    return sum(np.linalg.norm(b - a) for a, b in zip(q, q[1:]))
+
+
+def rutas_evacuacion():
+    """Rutas de evacuación (en u, v) desde los puntos más alejados hasta una salida al exterior."""
+    pA = dz.punto_AB
+    p1 = pA(sum(dz.P1_DESDE_A) / 2)
+    p2 = SD(0.0, sum(dz.PORTON_P2) / 2)
+    p3 = pA(sum(dz.P3_DESDE_A) / 2)
+    rutas = {
+        "R1": ("Escenario → escalera exterior → vereda → P-2",
+               [SD(16.5, 22.5), SD(17.9, 17.0), SD(17.9, 12.4), SD(17.9, 11.8), SD(10.0, 11.8), SD(1.0, 11.8), p2],
+               "2.º piso"),
+        "R2": ("Terraza → escalera principal → hall → P-1",
+               [SD(13.0, 24.0), SD(12.6, 21.0), SD(8.0, 21.0), SD(8.0, 19.3), SD(6.5, 19.5), SD(5.0, 20.4), p1],
+               "2.º piso"),
+        "R3": ("Cocina → ingreso de servicio → vereda → P-2",
+               [SD(14.5, 15.0), SD(10.6, 16.2), SD(9.4, 16.2), SD(9.4, 11.8), SD(1.0, 11.8), p2], "1.er piso"),
+        "R4": ("SS.HH. → despacho → porche lateral → P-3",
+               [SD(17.3, 19.0), SD(15.6, 19.5), SD(13.7, 21.0), SD(13.7, 23.9), SD(17.6, 24.0), SD(18.0, 25.4),
+                (12.4, 6.45), (10.6, 6.45), (9.6, 4.65), p3], "1.er piso"),
+        "R5": ("Garaje y estacionamientos → calzada → V-1",
+               [SD(24.0, 7.0), SD(2.0, 7.0), SD(-0.5, 7.0)], "exterior"),
+    }
+    return rutas
+
+
+def lamina_A03(pdf, png_dir):
+    h = Hoja("A-03", "CIRCULACIONES Y EVACUACIÓN", "ARQUITECTURA", "1/150", 3, TOTAL_LAMINAS,
+             subtitulo="VEHICULAR, PEATONAL, SERVICIO Y RUTAS DE ESCAPE")
+    v = h.vista(X0, Y0, ESC_GENERAL, ORIGEN_GENERAL)
+    pl.dibujar_entorno(v)
+    base_tenue(v, 1)
+    # --- vehicular (doble sentido)
+    d_in, d_out = 6.7, 9.7
+    _flecha_ruta(v, [SD(-2.8, d_in), SD(21.4, d_in), (31.9, 5.7)], C_VEH, lw=0.9)
+    _flecha_ruta(v, [(30.4, 5.9), SD(21.4, d_out), SD(-2.8, d_out)], C_VEH, lw=0.9)
+    v.texto((32.2, 4.3), "INGRESO AL\nGARAJE", h=1.2, color=C_VEH, weight="bold", z=10, linespacing=1.0)
+    for p in dz.PLAZAS:
+        sm = (p["s0"] + p["s1"]) / 2 + (0.6 if p["tipo"] == "accesible" else 0.0)
+        _flecha_ruta(v, [SD(sm - 1.4, d_in), SD(sm, 4.0)], C_VEH, lw=0.5, cab=1.6)
+    _flecha_ruta(v, [SD(1.4, 5.9), SD(1.4, 4.3)], C_VEH, lw=0.5, cab=1.4)          # motos
+    v.texto(SD(15.5, 8.2), "VEHÍCULOS: INGRESO Y SALIDA POR V-1 (DOBLE SENTIDO)", h=1.6, color=C_VEH, weight="bold",
+            ang=ANG_EDIF + 90, z=10, bbox=dict(fc="white", ec="none", pad=0.3, alpha=0.9))
+    # --- peatonal público
+    pr = list(dz.CAMINOS["principal"].coords)
+    _flecha_ruta(v, [dz.punto_AB(sum(dz.P1_DESDE_A) / 2) + np.array([-1.6, 1.1])] + pr[1:], C_PEA, lw=0.8)
+    _flecha_ruta(v, [SD(6.4, 21.4), SD(9.5, 25.6), SD(13.5, 25.6)], C_PEA, lw=0.5, ls=(0, (4, 2)), cab=1.6)
+    _flecha_ruta(v, [SD(6.0, 18.6), SD(5.4, 15.0), SD(4.5, 13.0)], C_PEA, lw=0.5, ls=(0, (4, 2)), cab=1.6)
+    sur = list(dz.CAMINOS["sur"].coords)
+    _flecha_ruta(v, sur, C_PEA, lw=0.6, ls=(0, (4, 2)), cab=1.6)
+    # --- servicio: proveedores y personal (P-2) y leña
+    _flecha_ruta(v, [SD(-2.8, 11.8), SD(9.1, 11.8), SD(9.4, 12.6)], C_SERV, lw=0.8)
+    _flecha_ruta(v, [SD(6.0, 3.7), SD(7.6, 9.6), SD(8.7, 11.5)], C_SERV, lw=0.6, ls=(0, (2, 1.5)), cab=1.6)
+    v.texto(SD(5.0, 2.8) + np.array([0.0, 0.0]), "LEÑA", h=1.4, color=C_SERV, weight="bold", z=10,
+            bbox=dict(fc="white", ec="none", pad=0.2, alpha=0.9), ang=ANG_EDIF + 90)
+    # --- evacuación
+    for cod, (txt, pts, nivel) in rutas_evacuacion().items():
+        if cod in ("R1", "R2", "R3", "R4"):
+            _flecha_ruta(v, pts, C_EVAC, lw=0.45, ls=(0, (6, 2)), cab=1.8, z=9.5)
+            m = np.asarray(pts[len(pts) // 2], float)
+            v.texto(m, cod, h=1.5, color="white", weight="bold", z=11,
+                    bbox=dict(boxstyle="circle,pad=0.25", fc=C_EVAC, ec="none"))
+    # salidas y zona segura
+    for cod, p0, p1, tipo, _ in vanos():
+        if cod == "P-4":
+            continue
+        t, n = _normal_interior(p0, p1)
+        m = (p0 + p1) / 2 + n * 1.0
+        v.texto(m, "SALIDA", h=1.15, color="white", weight="bold", z=11,
+                bbox=dict(boxstyle="round,pad=0.25", fc="#2e7d32", ec="none"))
+    for c, txt in ((SD(3.9, 15.9), "ZONA\nSEGURA"), ((18.5, 2.6), "ZONA SEGURA\n(SISMO)")):
+        v.circulo(c, 4.8, fc="#2e7d32", ec="white", lw="medio", z=10.5)
+        v.texto(np.asarray(c) + np.array([0, -1.5]), txt, h=1.25, color="#2e7d32", weight="bold", z=11,
+                linespacing=1.0, va="top", bbox=dict(fc="white", ec="none", pad=0.2, alpha=0.9))
+    dibujar_cercos(v)
+    rotular_vanos(v)
+    marca_norte(v)
+    v.escala_grafica((215, 20), metros=10, paso=2)
+    h.titulo_vista(80, 23, "CIRCULACIONES Y RUTAS DE EVACUACIÓN", "ESC. 1/150")
+
+    # ---- franja derecha
+    x = h.x_franja + 2.5
+    y = 281
+    h.texto(x, y + 1, "LEYENDA", h=2.0, weight="bold", va="bottom")
+    items = [(C_VEH, "-", 0.9, "Circulación vehicular (doble sentido)"),
+             (C_PEA, "-", 0.8, "Circulación peatonal del público"),
+             (C_PEA, (0, (4, 2)), 0.5, "Recorridos por jardines y caminos"),
+             (C_SERV, "-", 0.8, "Servicio: personal y proveedores (P-2)"),
+             (C_SERV, (0, (2, 1.5)), 0.6, "Leña: del almacén existente a la cocina"),
+             (C_EVAC, (0, (6, 2)), 0.45, "Ruta de evacuación hacia la salida")]
+    for i, (col, ls, lw, txt) in enumerate(items):
+        yy = y - 3.0 - i * 3.8
+        h.ax.plot([x, x + 8], [yy, yy], color=col, lw=lw * dib.MM, ls=ls)
+        h.ax.annotate("", xy=(x + 9, yy), xytext=(x + 6.5, yy),
+                      arrowprops=dict(arrowstyle="-|>,head_length=0.5,head_width=0.25", color=col, lw=LW["medio"]))
+        h.texto(x + 11, yy, txt, h=1.45)
+    y = y - 3.0 - len(items) * 3.8 - 4
+    filas = []
+    for cod, (txt, pts, nivel) in rutas_evacuacion().items():
+        extra = 7.0 if cod in ("R1", "R2") else 0.0          # desarrollo de la escalera (en planta)
+        filas.append([cod, txt, f"{longitud(pts) + extra:.0f}"])
+    yb = h.tabla(x, y, ["RUTA", "RECORRIDO DE EVACUACIÓN", "m"], filas, [11, 63, 12], h_fila=3.8, h_txt=1.3,
+                 alinear=["c", "l", "r"])
+    h.texto(x, yb - 2.6, "Recorrido máximo admisible hasta una salida: 45 m (A.130).", h=1.35)
+    filas = [["P-1", "3.00", "600"], ["V-1", "6.00", "1 200"], ["P-2", "1.80", "360"], ["P-3", "1.20", "240"],
+             ["Escalera principal (2.º piso)", "1.20", "150"], ["Escalera exterior (2.º piso)", "1.20", "150"]]
+    yb = h.tabla(x, yb - 7, ["SALIDA / ESCALERA", "ANCHO m", "CAPAC. pers."], filas, [50, 18, 18], h_fila=3.8,
+                 h_txt=1.3, alinear=["l", "r", "r"])
+    h.texto(x, yb - 2.6, "Capacidad: puertas 0.005 m/pers.; escaleras 0.008 m/pers. (A.130).", h=1.35)
+    notas = [
+        "1. La calzada de 6.00 m permite el cruce de dos vehículos y el acceso del camión de GLP y proveedores hasta la zona de carga.",
+        "2. Peatones y vehículos se separan: el público entra por P-1 (Jr. Rodríguez de Mendoza) y el servicio por P-2 (calle lateral).",
+        "3. En eventos: portón V-1 abierto y señalizado, personal de control en P-1 y luces de emergencia en caminos y escaleras.",
+        "4. Señalización de seguridad según NTP 399.010-1; extintores PQS en cada nivel y K en la cocina.",
+    ]
+    h.notas(yb - 6, "NOTAS", notas, h=1.35, ancho_chars=66)
+    h.guardar(pdf, os.path.join(png_dir, "A-03.png") if png_dir else None)
+
+
+# ==========================================================================
+# A-04  Sombrillas removibles: modo restaurante / modo evento y anclaje
+# ==========================================================================
+def mesas_evento(etapa=1):
+    """Mesas redondas de 8 (Ø 1.50 m) en los jardines sin sombrillas, pista de baile y buffet."""
+    pista = rect_uv_rot((16.0, 3.4), 7.0, 4.5) if etapa == 1 else None
+    obst = [dz.caminos_poly(etapa).buffer(0.2)]
+    if pista is not None:
+        obst.append(pista.buffer(0.6))
+    obst.append(rect_uv_rot(tuple(SD(13.0, 25.6)), 0.8, 5.0, dz.ANG_SD).buffer(1.0))   # buffet
+    libre = jardines(etapa).difference(unary_union(obst)).buffer(-1.45)
+    centros = []
+    for v_ in np.arange(0.0, 30.0, 0.35):
+        for u_ in np.arange(0.0, 40.0, 0.35):
+            p = Point(u_, v_)
+            if libre.contains(p) and all(p.distance(Point(c)) >= 3.05 for c in centros):
+                centros.append((p.x, p.y))
+    return centros, pista
+
+
+def rect_uv_rot(c, ancho, alto, ang=0.0):
+    b = box(c[0] - ancho / 2, c[1] - alto / 2, c[0] + ancho / 2, c[1] + alto / 2)
+    return affinity.rotate(b, ang, origin=c)
+
+
+def _planta_modo(h: Hoja, x0, y0, escala, modo, etapa=1):
+    v = h.vista(x0, y0, escala, (-1.0, -1.0))
+    dibujar_superficies(v, etapa)
+    v.poly(unary_union([p["poly"] for p in dz.PLAZAS]), fc="white", ec="k", lw="fino", z=3)
+    dibujar_existentes(v, h=0.9)
+    dibujar_edificio_general(v, rotular=False)
+    for arb in dz.ARBOLES:
+        if arb.get("etapa", 1) <= etapa:
+            dibujar_arbol(v, arb)
+    todas = dz.SOMBRILLAS + dz.SOMBRILLAS_E1_SUR
+    n_asientos = 0
+    if modo == "restaurante":
+        for a in todas:
+            dibujar_sombrilla(v, a, rotulo=True, h=1.2)
+            n_asientos += asientos(a)
+    else:
+        for a in todas:
+            dibujar_sombrilla(v, a, solo_anclaje=True, rotulo=False)
+        centros, pista = mesas_evento(etapa)
+        for c in centros:
+            v.poly(Point(c).buffer(0.75), fc="white", ec="k", lw="fino", z=6)
+            for k in range(8):
+                ang = 2 * math.pi * k / 8
+                q = np.asarray(c) + 1.15 * np.array([math.cos(ang), math.sin(ang)])
+                v.poly(Point(q).buffer(0.22), fc="white", ec="k", lw="fino", z=6)
+        n_asientos = 8 * len(centros)
+        if pista is not None:
+            v.poly(pista, fc="#fde7b0", ec="k", lw="medio", z=6, hatch="..", hatch_color="#c9a227")
+            v.texto(np.array(pista.centroid.coords[0]), "PISTA DE BAILE\n7.00 × 4.50", h=1.2, weight="bold", z=7,
+                    linespacing=1.0)
+        buffet = rect_uv_rot(tuple(SD(13.0, 25.6)), 0.8, 5.0, ANG_SD_DEG())
+        v.poly(buffet, fc="#f6d7d0", ec="k", lw="fino", z=6)
+        v.texto(np.array(buffet.centroid.coords[0]) + np.array([-1.3, -0.2]), "BUFFET", h=1.0, ang=ANG_EDIF + 90,
+                z=7)
+    dibujar_cercos(v)
+    marca = dict(fc="white", ec="none", pad=0.4, alpha=0.9)
+    titulo = "MODO RESTAURANTE" if modo == "restaurante" else "MODO EVENTO (SOMBRILLAS RETIRADAS)"
+    return v, n_asientos, titulo
+
+
+def ANG_SD_DEG():
+    return dz.ANG_SD
+
+
+def _detalle_anclaje(h: Hoja, x0, y0):
+    """Corte del anclaje removible a escala 1/10 (unidades del dibujo en m)."""
+    v = h.vista(x0, y0, 20, (0.0, 0.0))
+    # terreno y relleno
+    v.poly(box(-0.45, -0.75, 0.45, 0.0), fc="#efe8da", ec="none", z=1, hatch="..", hatch_color="#b9a98a")
+    v.poly(box(-0.45, -0.05, 0.45, 0.0), fc="#9cc27d", ec="none", z=1.2)
+    v.linea([(-0.45, 0.0), (0.45, 0.0)], lw="medio", z=3)
+    # dado de concreto
+    v.poly(box(-0.2, -0.60, 0.2, -0.02), fc="#d9d9d9", ec="k", lw="medio", z=2, hatch="..", hatch_color="#8c8c8c")
+    # grava de drenaje
+    v.poly(box(-0.2, -0.72, 0.2, -0.60), fc="#cfc2a5", ec="k", lw="fino", z=2, hatch="oo", hatch_color="#8a7a5a")
+    # camisa (tubo de acero Ø 3") y tapa
+    v.poly(box(-0.044, -0.52, 0.044, -0.0), fc="white", ec="k", lw="medio", z=3)
+    v.poly(box(-0.038, -0.50, 0.038, -0.0), fc="#f4f4f4", ec="k", lw="fino", z=3.1)
+    v.poly(box(-0.065, -0.008, 0.065, 0.004), fc="#555555", ec="k", lw="fino", z=3.2)
+    v.poly(box(-0.10, -0.55, 0.10, -0.52), fc="#888888", ec="k", lw="fino", z=3.2)       # plancha base
+    for x_ in (-0.08, 0.08):
+        v.linea([(x_, -0.55), (x_, -0.585)], lw="medio", z=3.2)
+    v.poly(box(-0.006, -0.62, 0.006, -0.50), fc="#c9c9c9", ec="k", lw="fino", z=3.3)     # tubo de drenaje
+    # mástil de la sombrilla
+    v.poly(box(-0.030, -0.48, 0.030, 0.45), fc="#e0b878", ec="k", lw="medio", z=4)
+    v.linea([(-0.05, -0.06), (0.05, -0.06)], lw="grueso", z=4.2)                           # pasador
+    v.circulo((0.0, -0.06), 0.8, fc="white", ec="k", lw="fino", z=4.3)
+    # cotas y llamadas
+    v.cota((-0.2, -0.60), (0.2, -0.60), offset_mm=5, lado=-1, texto="0.40", h=1.3)
+    v.cota((-0.2, -0.60), (-0.2, 0.0), offset_mm=5, lado=1, texto="0.60", h=1.3)
+    llamadas = [((0.0, 0.40), "Mástil de aluminio Ø 60 mm de la sombrilla"),
+                ((0.05, -0.06), "Pasador de seguridad Ø 12 mm (antirrobo)"),
+                ((0.06, 0.0), "Tapa abatible de acero inox. al ras del césped"),
+                ((0.044, -0.25), "Camisa: tubo de acero galv. Ø 3\" e = 3 mm, L = 0.50 m"),
+                ((0.15, -0.30), "Dado de concreto f'c 175 kg/cm², 0.40 × 0.40 × 0.60 m"),
+                ((0.10, -0.535), "Plancha base 200 × 200 × 6 mm + 2 anclajes Ø 3/8\""),
+                ((0.0, -0.66), "Grava de drenaje e = 0.12 m y tubo de purga Ø 1/2\"")]
+    for i, (p, txt) in enumerate(llamadas):
+        q = v.T(p)
+        xt, yt = x0 + 30, y0 + 22 - i * 6.0
+        h.ax.plot([q[0], xt - 1], [q[1], yt], color="k", lw=LW["fino"], zorder=8)
+        h.ax.add_patch(Circle(q, 0.5, fc="k", zorder=8))
+        h.texto(xt, yt, txt, h=1.35)
+    h.titulo_vista(x0 - 22, y0 + 34, "DETALLE: ANCLAJE REMOVIBLE", "ESC. 1/20", ancho=62)
+
+
+def _elevacion_sombrilla(h: Hoja, x0, y0):
+    """Elevación de la sombrilla 3.00 × 3.00 m con su mesa (esc. 1/50)."""
+    v = h.vista(x0, y0, 50, (0.0, 0.0))
+    v.linea([(-2.2, 0.0), (2.2, 0.0)], lw="medio", z=3)
+    v.poly(Polygon([(-1.5, 2.2), (0.0, 2.75), (1.5, 2.2), (1.5, 2.12), (0.0, 2.6), (-1.5, 2.12)]), fc="#f2e3c6",
+           ec=MARRON, lw="medio", z=4)
+    v.poly(box(-0.03, 0.0, 0.03, 2.85), fc="#e0b878", ec="k", lw="fino", z=4.1)
+    v.poly(box(-0.9, 0.72, 0.9, 0.76), fc="white", ec="k", lw="fino", z=4)
+    for x_ in (-0.8, 0.8):
+        v.linea([(x_, 0.0), (x_, 0.72)], lw="fino", z=4)
+    for x_ in (-1.35, 1.35):
+        v.poly(box(x_ - 0.2, 0.42, x_ + 0.2, 0.46), fc="white", ec="k", lw="fino", z=4)
+        v.linea([(x_ - 0.18, 0.0), (x_ - 0.18, 0.9)], lw="fino", z=4)
+    v.cota((-1.5, 2.2), (1.5, 2.2), offset_mm=9, texto="3.00", h=1.4)
+    v.cota((1.5, 0.0), (1.5, 2.2), offset_mm=8, lado=-1, texto="2.20", h=1.4)
+    v.cota((-1.5, 0.0), (-1.5, 2.85), offset_mm=8, lado=1, texto="2.85", h=1.4)
+    h.titulo_vista(x0 - 30, y0 - 9, "SOMBRILLA 3.00 × 3.00 m", "ESC. 1/50", ancho=46)
+
+
+def lamina_A04(pdf, png_dir):
+    h = Hoja("A-04", "SOMBRILLAS REMOVIBLES", "ARQUITECTURA", "INDICADA", 4, TOTAL_LAMINAS,
+             subtitulo="MODO RESTAURANTE / MODO EVENTO Y ANCLAJE")
+    esc = 300
+    vR, nR, tR = _planta_modo(h, 16.0, 150.0, esc, "restaurante")
+    vE, nE, tE = _planta_modo(h, 165.0, 150.0, esc, "evento")
+    h.titulo_vista(18, 143, tR, "ESC. 1/300", ancho=62)
+    h.titulo_vista(167, 143, tE, "ESC. 1/300", ancho=86)
+    for vv in (vR, vE):
+        vv.norte((vv.x0 + 128, vv.y0 + 112), g.NORTE, largo=9)
+    _elevacion_sombrilla(h, 62, 62)
+    _detalle_anclaje(h, 172, 82)
+    # ---- franja derecha
+    x = h.x_franja + 2.5
+    jard = jardines(1).difference(dz.caminos_poly(1)).area
+    filas = [["Sombrillas 3.00 × 3.00 m instaladas", "10", "0"],
+             ["Asientos en jardines", f"{nR}", f"{nE}"],
+             ["Mesas en jardines", "10 (de 6 y 4)", f"{nE // 8} redondas de 8"],
+             ["Pista de baile", "-", "31.5 m²"],
+             ["Césped libre para el evento", "-", f"{jard:.0f} m²"],
+             ["Aforo de pie en jardines (1.0 m²/pers.)", "-", f"{jard:.0f} pers."]]
+    yb = h.tabla(x, 281, ["1.ª ETAPA", "RESTAURANTE", "EVENTO"], filas, [44, 21, 21], h_fila=3.9, h_txt=1.3,
+                 alinear=["l", "r", "r"])
+    notas = [
+        "1. Cada sombrilla se ancla en una camisa empotrada en un dado de concreto bajo el césped; para un evento se retira el pasador, se levanta el mástil y se cierra la tapa al ras: el jardín queda libre en minutos y sin bases que estorben.",
+        "2. Las sombrillas retiradas se guardan cerradas en el depósito bajo la escalera o en el garaje; pueden reinstalarse en cualquier camisa o sobre bases móviles lastradas (4 × 25 kg) donde convenga.",
+        "3. Sombrilla profesional de mástil central de aluminio, lona acrílica 3.00 × 3.00 m resistente al agua y UV, con faldón; retirar o cerrar con viento > 40 km/h.",
+        "4. Modo evento: mesas redondas de 8 personas, pista de baile sobre el césped (tarima modular opcional), buffet bajo el porche lateral y la música en el escenario de la terraza.",
+        "5. En la 2.ª etapa el jardín posterior pasa a ser la zona de piscina; el modo evento usa el jardín de ingreso, el jardín lateral, los porches y la terraza.",
+    ]
+    yb = h.notas(yb - 6, "NOTAS", notas, h=1.35, ancho_chars=66)
+    h.guardar(pdf, os.path.join(png_dir, "A-04.png") if png_dir else None)
+
+
 def generar(salida_dir, png_dir=None, solo=None):
     os.makedirs(salida_dir, exist_ok=True)
     if png_dir:
@@ -973,6 +1294,8 @@ def generar(salida_dir, png_dir=None, solo=None):
     laminas = [
         ("A-01", lambda p: lamina_planimetria(p, png_dir, 1)),
         ("A-02", lambda p: lamina_planimetria(p, png_dir, 2)),
+        ("A-03", lambda p: lamina_A03(p, png_dir)),
+        ("A-04", lambda p: lamina_A04(p, png_dir)),
         ("A-05", lambda p: lamina_planta(p, png_dir, 1)),
         ("A-06", lambda p: lamina_planta(p, png_dir, 2)),
     ]
