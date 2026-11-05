@@ -118,11 +118,11 @@ ZONA_CARGA = rect_sd(7.6, 11.0, D_CALZ[1] - 1.9, D_CALZ[1])
 # --------------------------------------------------------------------------
 # Edificio central (estructura metálica de 2 pisos), marco (s, d)
 # --------------------------------------------------------------------------
-EJES_S = (7.5, 13.0, 18.5)       # ejes 1-2-3 (norte → sur)
-EJES_D = (12.4, 17.9, 22.9)      # ejes A-B-C (calzada → jardín)
+EJES_S = (7.5, 13.0, 18.5)       # ejes 1-2-3 (fachada de ingreso → fachada posterior)
+EJES_D = (12.4, 17.9, 22.9)      # ejes A-B-C (calzada → jardín lateral)
 S0, S1 = EJES_S[0], EJES_S[-1]
 D0, D1 = EJES_D[0], EJES_D[-1]
-VOLADO_N, VOLADO_O = 2.0, 2.0    # voladizos del 2.º piso: norte (sobre el ingreso) y oeste (hacia el jardín)
+VOLADO_N, VOLADO_O = 2.0, 2.0    # voladizos del 2.º piso: sobre el ingreso (N) y hacia el jardín lateral (O)
 RETIRO_AEREO = 1.0               # el borde de la losa en volado queda a ≥ 1.00 m del lindero A-B
 NPT2 = 3.85                      # nivel del 2.º piso
 H_ALERO, H_CUMBRE = 7.15, 8.25   # techo a dos aguas sobre bar y escenario
@@ -221,13 +221,13 @@ def _somb(cod, s, d, zona, mesa="6", ang=None):
 # Etapa 1 (sin piscina): 10 sombrillas. En la 2.ª etapa la franja sur se convierte en la zona de piscina: S6 y
 # S7 pasan a la zona de relajo y S8-S10 quedan para eventos o se reubican.
 SOMBRILLAS = [
-    _somb("S1", 2.9, 14.6, "Jardín norte"),
-    _somb("S2", 3.2, 18.3, "Jardín norte"),
-    _somb("S3", 11.6, 26.6, "Jardín oeste"),
-    _somb("S4", 15.3, 27.4, "Jardín oeste"),
-    _somb("S5", 17.0, 31.2, "Jardín oeste", "4"),
+    _somb("S1", 2.9, 14.0, "Jardín de ingreso"),
+    _somb("S2", 3.0, 17.6, "Jardín de ingreso"),
+    _somb("S3", 11.6, 26.6, "Jardín lateral"),
+    _somb("S4", 15.3, 27.4, "Jardín lateral"),
+    _somb("S5", 17.0, 31.2, "Jardín lateral", "4"),
 ]
-SOMBRILLAS_E1_SUR = [Sombrilla(f"S{6 + i}", (8.6 + 4.0 * i, 2.3), 0.0, "Franja sur (etapa 1)") for i in range(5)]
+SOMBRILLAS_E1_SUR = [Sombrilla(f"S{6 + i}", (8.6 + 4.0 * i, 2.3), 0.0, "Jardín posterior (etapa 1)") for i in range(5)]
 SOMBRILLAS_E2_RELAJO = [Sombrilla("S6", (25.75, 2.05), 0.0, "Zona de relajo", "C")]
 CAMILLAS = [rect_uv(24.45 + 1.0 * i, 24.45 + 1.0 * i + 0.72, 0.8, 2.8) for i in range(3)]
 HAMACAS = [rect_uv(26.85, 29.2, 3.05 + 1.2 * i, 3.05 + 1.2 * i + 1.0) for i in range(2)]   # soportes de hamaca de 2.35 m
@@ -252,14 +252,13 @@ P1_C = punto_AB(sum(P1_DESDE_A) / 2)                 # centro de la puerta peato
 P2_C = SD(0.0, sum(PORTON_P2) / 2)
 P3_C = punto_AB(sum(P3_DESDE_A) / 2)
 CAMINOS = {
-    "principal": LineString([P1_C, SD(4.9, 21.55), SD(6.3, 19.6), ENTRADA]),
-    "porche_oeste": LineString([SD(6.2, 24.0), SD(18.3, 24.0)]),
-    # camino sur: del porche oeste a la salida de emergencia P-3 bordeando el futuro cerco de la piscina; en la
-    # 2.ª etapa su tramo final es el atrio de ingreso a los vestidores (control de acceso a la piscina)
-    "sur": LineString([SD(16.4, 24.0), (12.4, 6.45), (10.6, 6.45), (9.6, 4.65), tuple(P3_C)]),
+    "principal": LineString([P1_C, SD(5.0, 20.4), SD(6.7, 19.6), ENTRADA]),
+    # camino posterior: del extremo del porche lateral a la salida de emergencia P-3 bordeando el futuro cerco de la
+    # piscina; en la 2.ª etapa su tramo final es el atrio de ingreso a los vestidores (control de acceso a la piscina)
+    "sur": LineString([SD(17.6, 24.0), SD(18.0, 25.4), (12.4, 6.45), (10.6, 6.45), (9.6, 4.65), tuple(P3_C)]),
 }
-ANCHO_CAMINO = {"principal": 1.80, "porche_oeste": 1.50, "sur": 1.20}
-ETAPA_CAMINO = {"principal": 1, "porche_oeste": 1, "sur": 1}
+ANCHO_CAMINO = {"principal": 1.80, "sur": 1.20}
+ETAPA_CAMINO = {"principal": 1, "sur": 1}
 
 
 def camino_poly(nombre):

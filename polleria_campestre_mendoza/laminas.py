@@ -37,6 +37,7 @@ import edificio as ed  # noqa: E402
 import estructura_pol as es  # noqa: E402
 import dibujo as dib  # noqa: E402
 import planos as pl  # noqa: E402
+import exportar_3d as ex  # noqa: E402
 from dibujo import (AZUL, GRIS, GRIS_CLARO, LW, ROJO, VERDE, Hoja, Vista, corte_marca, pt)  # noqa: E402
 
 dib.PROYECTO = "POLLERÍA CAMPESTRE"
@@ -330,8 +331,8 @@ def dibujar_edificio_general(v: Vista, rotular=True, h=1.15):
         for txt, s_, d_ in etiquetas:
             v.texto(SD(s_, d_), txt, h=h, ang=ANG_EDIF, linespacing=1.0, z=7,
                     weight="bold" if "COCINA" in txt or "PORCHE" in txt else "normal")
-        v.texto(SD(6.5, 17.2), "PORCHE NORTE", h=h, ang=ANG_EDIF, z=7)
-        v.texto(SD(12.2, 23.9), "PORCHE OESTE", h=h, ang=ANG_EDIF + 90, z=7)
+        v.texto(SD(6.5, 17.2), "PORCHE DE INGRESO", h=h, ang=ANG_EDIF, z=7)
+        v.texto(SD(12.2, 23.9), "PORCHE LATERAL", h=h, ang=ANG_EDIF + 90, z=7)
 
 
 def dibujar_superficies(v: Vista, etapa):
@@ -457,10 +458,10 @@ def lamina_planimetria(pdf, png_dir, etapa=1):
     cotas_generales(v)
     # rótulos de zonas
     caja = dict(fc="white", ec="none", pad=0.5, alpha=0.8)
-    v.texto(SD(4.2, 16.4) + np.array([0.0, 0.0]), "JARDÍN NORTE", h=1.7, weight="bold", color=VERDE, bbox=caja)
-    v.texto(SD(13.2, 30.3), "JARDÍN OESTE", h=1.7, weight="bold", color=VERDE, ang=ANG_EDIF + 60, bbox=caja)
+    v.texto(SD(4.2, 16.4) + np.array([0.0, 0.0]), "JARDÍN DE INGRESO", h=1.7, weight="bold", color=VERDE, bbox=caja)
+    v.texto(SD(13.2, 30.3), "JARDÍN LATERAL", h=1.7, weight="bold", color=VERDE, ang=ANG_EDIF + 60, bbox=caja)
     if etapa == 1:
-        v.texto((19.0, 4.55), "JARDÍN SUR (FUTURA ZONA DE PISCINA - 2.ª ETAPA)", h=1.6, weight="bold", color=VERDE,
+        v.texto((19.0, 4.55), "JARDÍN POSTERIOR (FUTURA ZONA DE PISCINA - 2.ª ETAPA)", h=1.6, weight="bold", color=VERDE,
                 bbox=caja)
     v.texto(SD(12.0, 25.2) + np.array([0.0, 0.0]), "", h=1.0)
     v.texto(SD(5.0, 19.0) + _N * 0.0, "", h=1.0)
@@ -501,7 +502,7 @@ def lamina_planimetria(pdf, png_dir, etapa=1):
         notas = [
             "1. Cotas en metros. Las estructuras de leña y garaje existentes se conservan; el garaje se usa por la misma calzada.",
             "2. Las sombrillas S1 a S10 se anclan en camisas metálicas empotradas al ras del césped: se retiran en minutos para eventos (ver A-04).",
-            "3. La franja sur (S6 a S10) se reserva para la piscina de la 2.ª etapa (ver A-02).",
+            "3. El jardín posterior (S6 a S10) se reserva para la piscina de la 2.ª etapa (ver A-02).",
             "4. Estacionamiento descubierto: 5 plazas (1 accesible 3.80 × 5.00 m) + 2 motos. Para eventos se coordina estacionamiento en la vía (ver A-03).",
         ]
     else:
@@ -559,6 +560,411 @@ def dibujar_piscina_general(v: Vista, rotular=True, h=1.25):
         v.texto((12.0, 6.15), "CERCO DE VIDRIO h = 1.20 m", h=1.0, color=AZUL, ha="left")
 
 
+# ==========================================================================
+# Plantas del edificio (A-05, A-06): coordenadas locales x = -d, y = -s
+# ==========================================================================
+ESC_EDIF = 75
+ORIGEN_EDIF = (-24.9, -18.5)
+XE0, YE0 = 58.0, 46.0
+F_MURO = "#4a4a4a"
+F_TABIQUE = "#9a9a9a"
+
+
+def PL(s, d):
+    return np.array(ed.L(s, d), float)
+
+
+def _loc(p_uv):
+    q = ed.local(Point(p_uv))
+    return np.array([q.x, q.y])
+
+
+def huecos_puertas(piso):
+    return unary_union([LineString([pu.p0, pu.p1]).buffer(0.25, cap_style=2) for pu in ed.PUERTAS if pu.piso == piso])
+
+
+def segmentos_muro(piso):
+    """Fachadas (de exportar_3d.muros) + tabiques interiores, en coordenadas locales."""
+    m1, m2 = ex.muros()
+    out = []
+    for sg in (m1 if piso == 1 else m2):
+        if sg["h0"] > 0.1 and piso == 2 and sg["h1"] > dz.NPT2 + 4.2:
+            pass
+        out.append((_loc(sg["a"]), _loc(sg["b"]), sg["tipo"]))
+    for s0, d0, s1, d1, tipo in ed.TABIQUES[piso]:
+        out.append((PL(s0, d0), PL(s1, d1), tipo))
+    return out
+
+
+def dibujar_muros(v: Vista, piso):
+    huecos = huecos_puertas(piso)
+    for a, b, tipo in segmentos_muro(piso):
+        if piso == 2 and np.allclose(a, _loc(dz.SD(ed.ASCENSOR[0], ed.ASCENSOR[2]))) is False:
+            pass
+        ln = LineString([a, b])
+        if tipo in ("muro", "muro_ventana_alta", "muro_ventana", "muro_acustico"):
+            esp = 0.25 if tipo == "muro_acustico" else 0.15
+            banda = ln.buffer(esp / 2, cap_style=2).difference(huecos)
+            v.poly(banda, fc=F_MURO, ec="k", lw="fino", z=5)
+            if tipo in ("muro_ventana_alta", "muro_ventana"):
+                _ventanas(v, a, b, alta=tipo == "muro_ventana_alta")
+        elif tipo == "tabique":
+            v.poly(ln.buffer(0.05, cap_style=2).difference(huecos), fc=F_TABIQUE, ec="k", lw="fino", z=5)
+        elif tipo in ("vidrio", "vidrio_plegable", "puerta_vidrio"):
+            t = (b - a) / np.linalg.norm(b - a)
+            n = np.array([-t[1], t[0]])
+            rest = ln.difference(huecos) if tipo != "puerta_vidrio" else ln
+            for parte in getattr(rest, "geoms", [rest]):
+                if parte.is_empty or parte.length < 0.05:
+                    continue
+                c = np.asarray(parte.coords)
+                for off in (-0.05, 0.05):
+                    v.linea([c[0] + n * off, c[-1] + n * off], lw="fino", z=5)
+                v.linea([c[0], c[-1]], lw=0.07 * dib.MM, color="#4a90c2", z=5)
+            if tipo == "vidrio_plegable":
+                pass
+        elif tipo == "pase":
+            t = (b - a) / np.linalg.norm(b - a)
+            n = np.array([-t[1], t[0]])
+            v.poly(ln.buffer(0.04, cap_style=2), fc="white", ec="k", lw="fino", z=5)
+            v.texto((a + b) / 2 + n * 0.0, "", h=1.0)
+        elif tipo == "baranda":
+            v.linea([a, b], lw="medio", color="k", z=5)
+            t = (b - a) / np.linalg.norm(b - a)
+            for k in np.arange(0.3, np.linalg.norm(b - a), 0.6):
+                v.circulo(a + t * k, 0.25, fc="k", ec="k", lw="fino", z=5.1)
+    # columnas
+    for s_, d_ in dz.COLUMNAS:
+        c = PL(s_, d_)
+        v.poly(box(c[0] - 0.102, c[1] - 0.102, c[0] + 0.102, c[1] + 0.102), fc="k", ec="k", lw="fino", z=6)
+
+
+def _ventanas(v: Vista, a, b, alta=False):
+    """Ventanas centradas en cada paño entre ejes (ancho 2.00 m)."""
+    t = (b - a) / np.linalg.norm(b - a)
+    n = np.array([-t[1], t[0]])
+    L = np.linalg.norm(b - a)
+    k = 0.6
+    while k + 2.0 <= L - 0.4:
+        p0, p1 = a + t * k, a + t * (k + 2.0)
+        v.poly(Polygon([p0 - n * 0.075, p1 - n * 0.075, p1 + n * 0.075, p0 + n * 0.075]), fc="white", ec="k",
+               lw="fino", z=5.2)
+        v.linea([p0, p1], lw="fino", ls=(0, (3, 2)) if alta else "-", z=5.3)
+        k += 2.75
+
+
+def dibujar_puertas(v: Vista, piso):
+    for pu in ed.PUERTAS:
+        if pu.piso != piso:
+            continue
+        p0, p1 = np.asarray(pu.p0, float), np.asarray(pu.p1, float)
+        w = np.linalg.norm(p1 - p0)
+        t = (p1 - p0) / w
+        n = np.array([-t[1], t[0]]) * pu.lado
+        if pu.tipo == "batiente":
+            hoja = p0 + n * w
+            v.linea([p0, hoja], lw="medio", z=6)
+            _arco(v, p0, w, p1 - p0, hoja - p0)
+        elif pu.tipo == "corrediza":
+            v.linea([p0 + n * 0.04, p0 + t * (w * 0.55) + n * 0.04], lw="medio", z=6)
+            v.linea([p1 - n * 0.04, p1 - t * (w * 0.55) - n * 0.04], lw="medio", z=6)
+        elif pu.tipo == "plegable":
+            k = 6
+            pts = [p0 + t * (w * i / k) + n * (0.25 if i % 2 else 0.0) for i in range(k + 1)]
+            v.linea(pts, lw="fino", z=6)
+
+
+def _inodoro(v: Vista, pol):
+    x0, y0, x1, y1 = pol.bounds
+    c = np.array([(x0 + x1) / 2, (y0 + y1) / 2])
+    v.poly(pol, fc="white", ec="k", lw="fino", z=6)
+    r = min(x1 - x0, y1 - y0) * 0.32
+    v.poly(Point(c).buffer(r), fc="white", ec="k", lw="fino", z=6.1)
+
+
+def dibujar_equipos(v: Vista, piso, h_tag=1.25):
+    for e in ed.EQ:
+        if e.piso != piso:
+            continue
+        if e.tipo == "campana":
+            v.poly(e.poly, fc="none", ec="k", lw="fino", ls=(0, (5, 2)), z=6.4)
+            c = np.array(e.poly.centroid.coords[0])
+            continue
+        if e.tipo == "escenario":
+            continue
+        if e.tipo == "sanitario":
+            if "Inodoro" in e.nombre:
+                _inodoro(v, e.poly)
+            else:
+                v.poly(e.poly, fc="white", ec="k", lw="fino", z=6)
+                c = np.array(e.poly.centroid.coords[0])
+                v.poly(Point(c).buffer(0.13), fc="white", ec="k", lw="fino", z=6.1)
+            continue
+        fc = {"equipo": "#e9b98d", "mueble": "#f2f2f2", "ducto": "#c9c9c9"}.get(e.tipo, "white")
+        hatch = "////" if e.tipo == "equipo" else ("xx" if e.tipo == "ducto" else None)
+        v.poly(e.poly, fc=fc, ec="k", lw="fino", z=6, hatch=hatch, hatch_color="#a0703f")
+        if e.etiqueta:
+            c = np.array(e.poly.centroid.coords[0])
+            v.texto(c, e.etiqueta, h=h_tag, weight="bold", z=7, bbox=dict(fc="white", ec="none", pad=0.25, alpha=0.9))
+
+
+def dibujar_mesas(v: Vista, mesas, sillas=True):
+    for m in mesas:
+        x0, y0, x1, y1 = m.bounds
+        c = np.array([(x0 + x1) / 2, (y0 + y1) / 2])
+        v.poly(m, fc="white", ec="k", lw="fino", z=6)
+        if sillas:
+            r = (x1 - x0) / 2 + 0.28
+            lados = ((0, r), (0, -r)) if (x1 - x0) < 0.75 else ((r, 0), (-r, 0), (0, r), (0, -r))
+            for dx, dy in lados:
+                q = c + np.array([dx, dy])
+                v.poly(box(q[0] - 0.2, q[1] - 0.2, q[0] + 0.2, q[1] + 0.2), fc="white", ec="k", lw="fino", z=6)
+
+
+def dibujar_escaleras_planta(v: Vista, piso):
+    tr1, desc, tr2 = ed.escalera_U()
+    t1, desc2, t2, lleg = ed.escalera_exterior()
+    if piso == 1:
+        for pol in tr1 + [desc] + tr2:
+            v.poly(pol, fc="white", ec="k", lw="fino", z=4)
+        a = np.array(tr1[0].centroid.coords[0])
+        b = np.array(tr1[-1].centroid.coords[0])
+        c = np.array(tr2[0].centroid.coords[0])
+        dd = np.array(tr2[-1].centroid.coords[0])
+        v.linea([a, b], lw="fino", z=6.5)
+        v.linea([b, np.array(desc.centroid.coords[0]), c], lw="fino", z=6.5)
+        v.flecha_simple(c, dd, lw="fino", cab=1.6, z=6.6)
+        v.circulo(a, 0.12, fc="k", ec="k", lw="fino", z=6.6)
+        v.texto(a + np.array([0.0, 0.45]), "SUBE", h=1.3, z=7)
+        v.poly(ed.DEPOSITO_ESCALERA, fc="none", ec="k", lw="fino", ls=(0, (2, 2)), z=4.5)
+        for pol in t1 + [desc2] + t2 + [lleg]:
+            v.poly(local_uv_inv(pol), fc="white", ec="k", lw="fino", z=4)
+        a = np.array(local_uv_inv(t1[0]).centroid.coords[0])
+        b = np.array(local_uv_inv(t2[-1]).centroid.coords[0])
+        v.circulo(a, 0.12, fc="k", ec="k", lw="fino", z=6.6)
+        v.flecha_simple(a, b, lw="fino", cab=1.6, z=6.6)
+        v.texto(a + np.array([0.75, 0.0]), "SUBE", h=1.2, ang=90, z=7)
+    else:
+        for pol in tr1 + [desc] + tr2:
+            v.poly(pol, fc="#f4f4f4", ec="k", lw="fino", z=4)
+        a = np.array(tr2[-1].centroid.coords[0])
+        b = np.array(tr2[0].centroid.coords[0])
+        v.flecha_simple(a, b, lw="fino", cab=1.6, z=6.6)
+        v.texto(a + np.array([0.0, 0.45]), "BAJA", h=1.3, z=7)
+        for pol in t1 + [desc2] + t2:
+            v.poly(local_uv_inv(pol), fc="none", ec=GRIS, lw="fino", ls=(0, (2, 2)), z=4)
+        v.poly(local_uv_inv(lleg), fc="white", ec="k", lw="fino", z=4)
+        q = np.array(local_uv_inv(lleg).centroid.coords[0])
+        v.texto(q + np.array([0.8, 0.0]), "BAJA", h=1.2, ang=90, z=7)
+    asc = ed.RL(*ed.ASCENSOR)
+    v.poly(asc, fc="#eef6fb", ec="k", lw="medio", z=5)
+    c = np.asarray(asc.exterior.coords)[:4]
+    v.linea([c[0], c[2]], lw="fino", z=5.1)
+    v.linea([c[1], c[3]], lw="fino", z=5.1)
+
+
+def local_uv_inv(pol):
+    """Las escaleras se definen ya en coordenadas locales (RL)."""
+    return pol
+
+
+ETIQ_1 = {
+    "SS.HH. y vestidor del personal": ("SS.HH.\nPERSONAL", 8.15, 13.0),
+    "Almacén de insumos": ("ALMACÉN", 8.25, 16.4),
+    "Ingreso de servicio": ("INGRESO DE SERVICIO", 9.4, 14.5),
+    "Cocina: horno pollero, parrilla y freidoras": ("COCINA", 12.6, 16.4),
+    "Lavado de vajilla": ("LAVADO", 17.8, 13.8),
+    "Preparación fría y maceración": ("PREPARACIÓN", 16.9, 15.85),
+    "Cámara y bebidas": ("CÁMARA", 16.6, 16.75),
+    "Hall de ingreso": ("HALL DE\nINGRESO", 10.3, 19.1),
+    "Despacho, caja y mesas": ("DESPACHO, CAJA\nY MESAS", 13.55, 19.35),
+    "Lavatorios": ("LAVATORIOS", 15.55, 18.9),
+    "SS.HH. accesible": ("SS.HH.\nACCESIBLE", 17.6, 18.95),
+    "SS.HH. damas": ("SS.HH.\nDAMAS", 17.6, 20.75),
+    "SS.HH. varones": ("SS.HH.\nVARONES", 17.6, 22.2),
+}
+ETIQ_2 = {
+    "SS.HH. accesible": ("SS.HH.\nACCESIBLE", 8.4, 13.75),
+    "SS.HH. damas": ("SS.HH.\nDAMAS", 8.35, 15.3),
+    "SS.HH. varones": ("SS.HH.\nVARONES", 8.35, 16.85),
+    "Bar y bebidas": ("BAR Y BEBIDAS", 12.6, 14.55),
+    "Depósito del bar": ("DEPÓSITO DEL BAR", 16.15, 15.1),
+    "Pasillo de servicio y evacuación": ("PASILLO DE SERVICIO Y EVACUACIÓN", 17.9, 15.1),
+    "Escenario (+0.40)": ("ESCENARIO", 16.6, 20.9),
+    "Terraza exterior": ("TERRAZA EXTERIOR", 9.6, 19.1),
+}
+
+
+def rotular_ambientes(v: Vista, piso, h=1.45):
+    etiq = ETIQ_1 if piso == 1 else ETIQ_2
+    for a in ed.AMB:
+        if a.piso != piso or a.nombre not in etiq:
+            continue
+        txt, s_, d_ = etiq[a.nombre]
+        c = PL(s_, d_)
+        x0_, y0_, x1_, y1_ = a.poly.bounds
+        if (x1_ - x0_) < 2.0 and (y1_ - y0_) > 2.5:      # ambiente angosto: rótulo vertical
+            v.texto(c + np.array([-0.12, 0]), txt, h=h, weight="bold", z=8, ha="right", ang=90, va="center",
+                    rotation_mode="anchor") if False else None
+            v.texto(c + np.array([-0.15, 0]), txt, h=h, weight="bold", z=8, ang=90, va="bottom")
+            v.texto(c + np.array([0.12, 0]), f"{a.poly.area:.1f} m²", h=1.15, z=8, ang=90, va="top")
+        else:
+            v.texto(c + np.array([0, 0.22]), txt, h=h, weight="bold", z=8, va="bottom", linespacing=1.0)
+            v.texto(c - np.array([0, 0.05]), f"{a.poly.area:.1f} m²", h=1.15, z=8, va="top")
+
+
+def ejes_edificio(v: Vista, piso):
+    ys = [-s_ for s_ in dz.EJES_S]
+    xs = [-d_ for d_ in dz.EJES_D]
+    x_izq, x_der = -26.9, -9.4
+    y_inf, y_sup = -20.6, -3.4
+    for y_, lab in zip(ys, ("1", "2", "3")):
+        v.linea([(x_izq + 0.9, y_), (x_der - 0.9, y_)], lw="fino", color=GRIS, ls=(0, (12, 2, 2, 2)), z=1)
+        v.marca_eje((x_der, y_), lab, r_mm=3.0, h=2.0)
+    for x_, lab in zip(xs, ("A", "B", "C")):
+        v.linea([(x_, y_inf + 0.9), (x_, y_sup - 0.9)], lw="fino", color=GRIS, ls=(0, (12, 2, 2, 2)), z=1)
+        v.marca_eje((x_, y_sup), lab, r_mm=3.0, h=2.0)
+    # cotas entre ejes
+    yc = y_sup - 1.6
+    pts_x = [-24.9, -22.9, -17.9, -12.4, -11.2]
+    for x0_, x1_ in zip(pts_x, pts_x[1:]):
+        v.cota((x0_, yc), (x1_, yc), offset_mm=0, h=1.6, ext=False)
+    v.cota((pts_x[0], yc + 0.9), (pts_x[-1], yc + 0.9), offset_mm=0, h=1.6, ext=False)
+    xc = x_izq + 1.7
+    pts_y = [-18.5, -13.0, -7.5, -5.5]
+    for y0_, y1_ in zip(pts_y, pts_y[1:]):
+        v.cota((xc, y0_), (xc, y1_), offset_mm=0, h=1.6, ext=False, lado=-1)
+    v.cota((xc - 0.9, pts_y[0]), (xc - 0.9, pts_y[-1]), offset_mm=0, h=1.6, ext=False, lado=-1)
+
+
+def marca_norte_local(h: Hoja, xy=(296, 262)):
+    v = h.vista(0, 0, 100)
+    v.norte(xy, ed.NORTE_LOCAL, largo=13)
+
+
+S_CORTE_Y, D_CORTE_X = 16.6, 14.0
+
+
+def cortes_en_planta(v: Vista):
+    corte_marca(v, PL(4.5, D_CORTE_X), PL(19.7, D_CORTE_X), "X", lado=-1)
+    corte_marca(v, PL(S_CORTE_Y, 10.0), PL(S_CORTE_Y, 26.3), "Y", lado=1)
+
+
+def lamina_planta(pdf, png_dir, piso):
+    codigo = "A-05" if piso == 1 else "A-06"
+    n = 5 if piso == 1 else 6
+    titulo = "PLANTA DEL 1.er PISO" if piso == 1 else "PLANTA DEL 2.º PISO"
+    sub = "COCINA, HORNOS, PARRILLA Y DESPACHO" if piso == 1 else "BAR, TERRAZA Y ESCENARIO"
+    h = Hoja(codigo, titulo, "ARQUITECTURA", "1/75", n, TOTAL_LAMINAS, subtitulo=sub)
+    v = h.vista(XE0, YE0, ESC_EDIF, ORIGEN_EDIF)
+    losa = ed.LOSA2_L
+    if piso == 1:
+        # porches, vereda y escalera exterior
+        v.poly(ed.local(dz.VEREDA).intersection(box(-13, -19, -11.1, -4)), fc=F_PAVIMENTO, ec="k", lw="fino", z=1)
+        v.poly(ed.PORCHE_L, fc=F_PAVIMENTO, ec="none", z=1)
+        v.poly(ed.local(dz.caminos_poly(1)).intersection(box(-27, -21, -9, -3)), fc=F_PAVIMENTO, ec="#9c8a63",
+               lw="fino", z=1.2)
+        v.poly(losa, fc="none", ec=ROJO, lw="medio", ls=(0, (6, 2, 1, 2)), z=7)
+        v.poly(ed.ENVOLVENTE_1, fc="white", ec="none", z=2)
+        colores = {"cocina": F_COCINA, "sshh": F_SSHH, "servicio": F_SERV}
+        for a in ed.AMB:
+            if a.piso == 1 and a.nombre not in ("Escalera principal", "Ascensor"):
+                v.poly(a.poly, fc=colores.get(a.uso, "white"), ec="none", z=2.5)
+        dibujar_mesas(v, ed.MESAS_1)
+    else:
+        v.poly(losa, fc="#f6f1e6", ec="k", lw="grueso", z=1)
+        v.poly(ed.ESCENARIO, fc=F_ESCENARIO, ec="k", lw="medio", z=2)
+        colores = {"sshh": F_SSHH, "servicio": F_SERV, "publico": "#fff7ec", "circulacion": "#f2f2f2"}
+        for a in ed.AMB:
+            if a.piso == 2 and a.uso in colores and a.nombre not in ("Escalera principal", "Ascensor"):
+                v.poly(a.poly, fc=colores[a.uso], ec="none", z=2.5)
+        dibujar_mesas(v, ed.MESAS_2)
+        for tb in ed.TABURETES:
+            v.circulo(tb, 1.6, fc="white", ec="k", lw="fino", z=6)
+        # barandas de vidrio en los bordes libres de la losa
+        for bd in ex.barandas():
+            a_, b_ = _loc(bd["a"]), _loc(bd["b"])
+            v.linea([a_, b_], lw="grueso", color=AZUL, z=6.5)
+        # techos en proyección
+        for t_ in (ed.TECHO_BAR, ed.TECHO_ESC):
+            v.poly(t_, fc="none", ec=GRIS, lw="fino", ls=(0, (8, 3)), z=7)
+
+    dibujar_escaleras_planta(v, piso)
+    dibujar_equipos(v, piso)
+    dibujar_muros(v, piso)
+    dibujar_puertas(v, piso)
+    rotular_ambientes(v, piso)
+    ejes_edificio(v, piso)
+    cortes_en_planta(v)
+    # rótulos sueltos
+    asc_c = np.array(ed.RL(*ed.ASCENSOR).centroid.coords[0])
+    v.texto(asc_c, "ASCENSOR", h=1.15, z=8, bbox=dict(fc="white", ec="none", pad=0.3))
+    if piso == 1:
+        v.texto(PL(5.85, 17.1), "PORCHE DE INGRESO", h=1.3, weight="bold", z=8)
+        v.texto(PL(13.4, 24.1), "PORCHE LATERAL", h=1.3, weight="bold", ang=90, z=8)
+        v.texto(PL(6.0, 11.8), "VEREDA", h=1.2, ang=90, z=8)
+        v.texto(PL(11.75, 22.35), "DEP.", h=1.1, z=8)
+        v.texto(PL(11.6, 19.1), "NPT ±0.00", h=1.1, z=8, color=AZUL)
+        v.texto(PL(12.25, 15.95) + np.array([0, 0]), "", h=1.0)
+        v.flecha_simple(PL(5.9, 19.3), PL(7.35, 19.3), lw="medio", cab=2.0)
+        v.texto(PL(5.4, 19.3), "INGRESO", h=1.3, weight="bold", z=8)
+        v.texto(PL(9.4, 11.55), "INGRESO\nSERVICIO", h=1.05, ang=90, z=8, linespacing=1.0)
+    else:
+        v.texto(PL(6.5, 15.15), "VOLADO TECHADO (ACCESO A SS.HH.)", h=1.25, z=8)
+        v.texto(PL(15.45, 20.9), "+0.40", h=1.2, z=8, color=AZUL)
+        v.texto(PL(9.6, 18.4), "NPT +3.85", h=1.1, z=8, color=AZUL)
+        v.texto(PL(18.0, 11.8), "ESC. EXT.", h=1.05, ang=90, z=8)
+    marca_norte_local(h, (300, 266))
+    v.escala_grafica((210, 18), metros=5, paso=1)
+    h.titulo_vista(60, 23, titulo, "ESC. 1/75")
+
+    # ---- franja derecha
+    x = h.x_franja + 2.5
+    filas = []
+    tot = 0.0
+    for a in ed.AMB:
+        if a.piso == piso:
+            filas.append([a.nombre, f"{a.poly.area:.1f}"])
+            tot += a.poly.area
+    if piso == 1:
+        filas.append(["Porches techados (bajo el 2.º piso)", f"{dz.PORCHE.area - ed.RL(*ed.ASCENSOR).area:.1f}"])
+    yb = h.tabla(x, 281, ["AMBIENTE", "m²"], filas, [72, 14], h_fila=3.6, h_txt=1.35, alinear=["l", "r"])
+    if piso == 1:
+        eqs = [["HP-1, HP-2", "Hornos polleros a leña, 40 pollos c/u, con chimenea"],
+               ["PA", "Parrilla a carbón 1.10 × 0.90 m"],
+               ["FR", "Freidoras a gas (2), con extintor clase K"],
+               ["MT", "Mesa de trabajo de acero inox. (isla)"],
+               ["PC", "Pase caliente y despacho a la caja"],
+               ["LV / MM", "Lavadero de 2 pozas / mesa de maceración"],
+               ["CF / DC", "Conservadoras y cámara / mostrador y caja"]]
+        yb = h.tabla(x, yb - 7, ["CÓD.", "EQUIPAMIENTO DE COCINA"], eqs, [16, 70], h_fila=3.6, h_txt=1.3,
+                     alinear=["c", "l"])
+        notas = [
+            "1. Línea de fuego contra el muro de servicio bajo campana de 5.00 m (filtros, ducto y extractor); hornos con chimenea propia hasta 1.00 m sobre la cumbrera.",
+            "2. Cocina: piso antideslizante con sumidero y trampa de grasas; muros con enchape hasta 2.10 m; extintor clase K a menos de 9 m de las freidoras y extintor de agua para los hornos a leña.",
+            "3. El ascensor panorámico (cabina 1.20 × 1.40 m) y el SS.HH. accesible cumplen la Norma A.120.",
+            "4. La leña llega por la calzada desde el almacén existente hasta el ingreso de servicio.",
+        ]
+    else:
+        terr = ed.TERRAZA.area
+        bar_pub = ed.RL(10.0, 15.0, 15.95, 17.9).area
+        filas_af = [["Terraza: restaurante (1.5 m²/pers)", f"{terr:.0f}", f"{terr / 1.5:.0f}"],
+                    ["Terraza: evento, de pie (1.0 m²/pers)", f"{terr:.0f}", f"{terr / 1.0:.0f}"],
+                    ["Bar: zona de clientes (1.0 m²/pers)", f"{bar_pub:.1f}", f"{bar_pub:.0f}"],
+                    ["Escenario: grupo musical", f"{ed.ESCENARIO.area:.0f}", "6-8"]]
+        yb = h.tabla(x, yb - 7, ["AFORO DEL 2.º PISO (A.070)", "m²", "PERS."], filas_af, [56, 14, 16], h_fila=3.6,
+                     h_txt=1.3, alinear=["l", "r", "r"])
+        notas = [
+            "1. Escenario de 4.00 × 6.00 m sobre tarima modular de +0.40 m; la losa se diseña para 750 kgf/m² (E.020) y puede ampliarse con módulos sobre la terraza.",
+            "2. Dos rutas de evacuación: escalera principal en U (1.20 m) y escalera exterior de 1.20 m por el pasillo de servicio; esta última sirve también para subir los equipos de sonido.",
+            "3. Barandas de vidrio laminado de 1.10 m con pasamanos de acero inoxidable.",
+            "4. Muro acústico tras el escenario y techos con aislamiento termoacústico; espectáculos hasta las 22:00 o con estudio acústico (ECA ruido).",
+            "5. Líneas grises discontinuas: proyección de los techos a dos aguas del bar y del escenario.",
+        ]
+    h.notas(yb - 5, "NOTAS", notas, h=1.35, ancho_chars=66)
+    h.guardar(pdf, os.path.join(png_dir, f"{codigo}.png") if png_dir else None)
+
+
 def generar(salida_dir, png_dir=None, solo=None):
     os.makedirs(salida_dir, exist_ok=True)
     if png_dir:
@@ -567,6 +973,8 @@ def generar(salida_dir, png_dir=None, solo=None):
     laminas = [
         ("A-01", lambda p: lamina_planimetria(p, png_dir, 1)),
         ("A-02", lambda p: lamina_planimetria(p, png_dir, 2)),
+        ("A-05", lambda p: lamina_planta(p, png_dir, 1)),
+        ("A-06", lambda p: lamina_planta(p, png_dir, 2)),
     ]
     with PdfPages(ruta) as pdf:
         for cod, fn in laminas:

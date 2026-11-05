@@ -59,8 +59,8 @@ def muros():
     H1 = dz.NPT2 - 0.45                   # cielo raso bajo vigas
     m1 = [
         # 1.er piso: fachada este (servicio) con puerta y ventanas altas
-        seg_sd(S0, D0, 8.2, D0, "muro", 0, H1), seg_sd(8.2, D0, 9.2, D0, "puerta", 0, 2.4),
-        seg_sd(9.2, D0, S1, D0, "muro_ventana_alta", 0, H1),
+        seg_sd(S0, D0, 8.95, D0, "muro", 0, H1), seg_sd(8.95, D0, 9.85, D0, "puerta", 0, 2.4),
+        seg_sd(9.85, D0, S1, D0, "muro_ventana_alta", 0, H1),
         # fachada sur (cocina y SS.HH.): muro con ventanas altas
         seg_sd(S1, D0, S1, D1, "muro_ventana_alta", 0, H1),
         # fachada oeste: SS.HH. (muro), despacho (puertas plegables de vidrio), hall (vidrio)
@@ -92,10 +92,12 @@ def muros():
         seg_sd(10.0, D0, 10.0, B1, "tabique", N2, N2 + H2), seg_sd(15.0, D0, 15.0, B1, "tabique", N2, N2 + H2),
         seg_sd(17.3, D0, 17.3, B1, "tabique", N2, N2 + H2),
         seg_sd(S0, 14.4, 10.0, 14.4, "tabique", N2, N2 + H2), seg_sd(S0, 16.2, 10.0, 16.2, "tabique", N2, N2 + H2),
-        # caja del ascensor (2 paradas)
-        *[seg_sd(*seg, "muro", 0, N2 + 2.9) for seg in (
-            (ed.ASCENSOR[0], ed.ASCENSOR[3], ed.ASCENSOR[1], ed.ASCENSOR[3]),
-            (ed.ASCENSOR[1], ed.ASCENSOR[2], ed.ASCENSOR[1], ed.ASCENSOR[3]))],
+        # ascensor panorámico exterior (caja de vidrio y acero sobre el porche de ingreso)
+        *[seg_sd(*seg, "vidrio", 0, N2 + 3.4) for seg in (
+            (ed.ASCENSOR[0], ed.ASCENSOR[2], ed.ASCENSOR[1], ed.ASCENSOR[2]),
+            (ed.ASCENSOR[1], ed.ASCENSOR[2], ed.ASCENSOR[1], ed.ASCENSOR[3]),
+            (ed.ASCENSOR[1], ed.ASCENSOR[3], ed.ASCENSOR[0], ed.ASCENSOR[3]),
+            (ed.ASCENSOR[0], ed.ASCENSOR[3], ed.ASCENSOR[0], ed.ASCENSOR[2]))],
     ]
     return m1, m2
 
