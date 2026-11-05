@@ -404,9 +404,14 @@ def asientos_jardin(etapa):
     return sum(asientos(a) for a in lista), len(lista)
 
 
+def _sillas(m):
+    x0, y0, x1, y1 = m.bounds
+    return 2 if (x1 - x0) < 0.75 else 4
+
+
 def asientos_edificio():
-    p1 = 4 * len(ed.MESAS_1)
-    p2 = 4 * len(ed.MESAS_2) + len(ed.TABURETES)
+    p1 = sum(_sillas(m) for m in ed.MESAS_1)
+    p2 = sum(_sillas(m) for m in ed.MESAS_2) + len(ed.TABURETES)
     return p1, p2
 
 
@@ -479,7 +484,7 @@ def lamina_planimetria(pdf, png_dir, etapa=1):
     sj, nm = asientos_jardin(etapa)
     p1, p2 = asientos_edificio()
     filas_m = [["Jardines: sombrillas (mesas de 6 y 4)", f"{nm}", f"{sj}"],
-               ["1.er piso: salón y porches (mesas de 4)", f"{len(ed.MESAS_1)}", f"{p1}"],
+               ["1.er piso: despacho y porches (mesas de 2 y 4)", f"{len(ed.MESAS_1)}", f"{p1}"],
                ["2.º piso: terraza (mesas de 4) y barras", f"{len(ed.MESAS_2)}", f"{p2}"],
                ["TOTAL MODO RESTAURANTE", "", f"{sj + p1 + p2}"]]
     if etapa >= 2:
