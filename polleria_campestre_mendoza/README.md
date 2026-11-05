@@ -11,6 +11,7 @@ y el **garaje del propietario** existentes.
 | `Planos_Polleria_Campestre_Mendoza.pdf` | 10 láminas A3 (abajo) |
 | `Memoria_Descriptiva_Polleria_Campestre.pdf` | Memoria descriptiva de 10 páginas: concepto, circulaciones, edificio, sombrillas, piscina, estructura, instalaciones, normativa, presupuesto y próximos pasos |
 | `Presupuesto_Polleria_Campestre.xlsx` | Presupuesto referencial por etapas, con fórmulas, metrados y supuestos |
+| `Polleria_Campestre_planta.dxf` | Planta general por capas (1.ª y 2.ª etapa) y plantas del edificio, en metros, para AutoCAD |
 | `vistas_previas/*.png` | Imagen de cada lámina |
 
 | Lámina | Título |
@@ -58,6 +59,7 @@ y el **garaje del propietario** existentes.
 | `presupuesto.py` | Metrados y presupuesto por etapas → xlsx |
 | `memoria.py` | Memoria descriptiva → PDF |
 | `exportar_3d.py` | Escena JSON para el modelo three.js (`render3d/web/`) |
+| `exportar_dxf.py` | Planta general y plantas del edificio → DXF |
 | `generar.py` | Regenera todo: `python3 generar.py` |
 
 ## Advertencias
