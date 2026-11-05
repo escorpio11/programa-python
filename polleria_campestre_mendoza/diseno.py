@@ -240,7 +240,7 @@ ARBOLES = [
     dict(nombre="Palmera", p=tuple(SD(9.7, 26.55)), copa=1.6, tipo="palmera"),
     dict(nombre="Palmera", p=(2.2, 1.45), copa=1.2, tipo="palmera"),
     dict(nombre="Arbusto ornamental", p=tuple(SD(0.9, 12.95)), copa=1.1, tipo="arbusto"),
-    dict(nombre="Palmera (zona de relajo)", p=(29.0, 4.9), copa=1.3, tipo="palmera", etapa=2),
+    dict(nombre="Palmera (zona de relajo)", p=(28.4, 1.7), copa=1.3, tipo="palmera", etapa=2),
 ]
 SETO = 0.60    # jardinera con seto vivo detrás del cerco de los frentes
 

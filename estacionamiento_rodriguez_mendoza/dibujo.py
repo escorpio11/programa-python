@@ -44,6 +44,7 @@ UBICACION = ["Jr. Rodríguez de Mendoza esq. calle lateral",
              "Dist. San Nicolás (Mendoza) - Prov. Rodríguez de Mendoza",
              "Departamento de Amazonas - Perú"]
 FECHA = "OCTUBRE 2026"
+SUBPROYECTO = "ANTEPROYECTO - ESTRUCTURA METÁLICA LIGERA"
 
 
 def pt(mm_text):
@@ -146,8 +147,7 @@ class Hoja:
         ya, yb = cortes[6]
         etiqueta(x0 + 1.5, yb - 1.0, "PROYECTO")
         ax.text(cx, ya + 6.6, PROYECTO, fontsize=pt(2.3), ha="center", va="center", weight="bold")
-        ax.text(cx, ya + 2.6, "ANTEPROYECTO - ESTRUCTURA METÁLICA LIGERA", fontsize=pt(1.6), ha="center",
-                va="center")
+        ax.text(cx, ya + 2.6, SUBPROYECTO, fontsize=pt(1.6), ha="center", va="center")
 
     # --- utilidades ------------------------------------------------------
     def vista(self, x0, y0, escala, origen_m=(0.0, 0.0)):
