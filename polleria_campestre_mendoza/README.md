@@ -13,6 +13,7 @@ y el **garaje del propietario** existentes.
 | `Presupuesto_Polleria_Campestre.xlsx` | Presupuesto referencial por etapas, con fórmulas, metrados y supuestos |
 | `Polleria_Campestre_planta.dxf` | Planta general por capas (1.ª y 2.ª etapa) y plantas del edificio, en metros, para AutoCAD |
 | `vistas_previas/*.png` | Imagen de cada lámina |
+| `vistas_3d/*.jpg` | 8 vistas 3D: aérea, ingreso desde el jirón, jardín lateral, terraza y escenario, porche, modo evento, 2.ª etapa con piscina y calzada de servicio |
 
 | Lámina | Título |
 |---|---|
@@ -61,6 +62,8 @@ y el **garaje del propietario** existentes.
 | `exportar_3d.py` | Escena JSON para el modelo three.js (`render3d/web/`) |
 | `exportar_dxf.py` | Planta general y plantas del edificio → DXF |
 | `generar.py` | Regenera todo: `python3 generar.py` |
+| `render3d/web/polleria.js` | Modelo three.js (reutiliza el entorno urbano del recorrido del estacionamiento) |
+| `render3d/render.mjs` | Vistas 3D: `node render3d/render.mjs salida/vistas_3d 1600 900` (Chromium headless) |
 
 ## Advertencias
 

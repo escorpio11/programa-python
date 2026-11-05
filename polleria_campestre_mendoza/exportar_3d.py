@@ -148,6 +148,7 @@ def autos():
 
 
 def exportar(ruta):
+    import laminas                        # import diferido: laminas importa este módulo
     m1, m2 = muros()
     t1, desc, t2, lleg = ed.escalera_exterior()
     datos = dict(
@@ -175,6 +176,8 @@ def exportar(ruta):
             calzada=pts(dz.CALZADA), vereda=pts(dz.VEREDA), zona_carga=pts(dz.ZONA_CARGA),
             plazas=[dict(codigo=p["codigo"], tipo=p["tipo"], poly=pts(p["poly"])) for p in dz.PLAZAS],
             motos=pts(dz.MOTOS), glp=pts(dz.GLP), porche=polys(dz.PORCHE), jardines=polys(dz.JARDINES),
+            setos=polys(laminas.seto(1)), setos2=polys(laminas.seto(2)),
+            mesas_evento=[[R(c[0]), R(c[1])] for c in laminas.mesas_evento(1)[0]],
             caminos=[dict(nombre=k, eje=pts(v), ancho=dz.ANCHO_CAMINO[k], etapa=dz.ETAPA_CAMINO[k],
                           poly=pts(dz.camino_poly(k))) for k, v in dz.CAMINOS.items()],
         ),
