@@ -44,14 +44,14 @@ const azar = () => { _sem = (_sem * 16807) % 2147483647; return (_sem - 1) / 214
 const FUENTE = '"Inter Display", "Inter", "Helvetica Neue", Arial, sans-serif';
 
 // ------------------------------------------------------------------ texturas de lienzo
-const texCaucho = (moteado = '#62666d', prob = 0.1) => repetir(lienzo(512, 512, (c, w, h) => {
-  c.fillStyle = '#1b1c1f'; c.fillRect(0, 0, w, h);
+const texCaucho = (moteado = '#8a8e96', prob = 0.12) => repetir(lienzo(512, 512, (c, w, h) => {
+  c.fillStyle = '#35373b'; c.fillRect(0, 0, w, h);
   for (let i = 0; i < 5200; i++) {
-    const g = 22 + Math.floor(azar() * 20); c.fillStyle = `rgb(${g},${g},${g + 2})`;
+    const g = 44 + Math.floor(azar() * 24); c.fillStyle = `rgb(${g},${g},${g + 2})`;
     c.fillRect(azar() * w, azar() * h, 1 + azar() * 2, 1 + azar() * 2);
   }
-  for (let i = 0; i < 2600; i++) { c.fillStyle = azar() < prob ? '#b9bcc2' : moteado; c.globalAlpha = 0.35 + azar() * 0.5; c.fillRect(azar() * w, azar() * h, 1 + azar() * 1.6, 1 + azar() * 1.6); }
-  c.globalAlpha = 1; c.strokeStyle = '#0c0c0d'; c.lineWidth = 3; c.strokeRect(0, 0, w, h);
+  for (let i = 0; i < 2600; i++) { c.fillStyle = azar() < prob ? '#d2d5da' : moteado; c.globalAlpha = 0.4 + azar() * 0.5; c.fillRect(azar() * w, azar() * h, 1 + azar() * 1.6, 1 + azar() * 1.6); }
+  c.globalAlpha = 1; c.strokeStyle = '#1f2023'; c.lineWidth = 3; c.strokeRect(0, 0, w, h);
 }), 1, 1);
 const texGrass = () => repetir(lienzo(512, 512, (c, w, h) => {
   c.fillStyle = '#3c8a3a'; c.fillRect(0, 0, w, h);
@@ -133,7 +133,7 @@ function texPuerta(txt) {
 // ------------------------------------------------------------------ materiales de arquitectura
 const M_ = {
   caucho: std(0xffffff, 0.92, 0, { map: repetir(texCaucho(), 1, 1) }),
-  cauchoPL: std(0xffffff, 0.92, 0, { map: repetir(texCaucho('#8a2a2d', 0.05), 1, 1) }),
+  cauchoPL: std(0xffffff, 0.92, 0, { map: repetir(texCaucho('#b0383c', 0.06), 1, 1) }),
   grass: std(0xffffff, 0.95, 0, { map: texGrass() }),
   vinilico: std(0xffffff, 0.55, 0, { map: texVinilico() }),
   baldosa: std(0xffffff, 0.35, 0, { map: texBaldosa() }),
@@ -355,6 +355,7 @@ const espejos = [];
       g.add(viga([a[0], zMed, a[1]], [b[0], zMed, b[1]], 0.05, 0.04, M_.acero));
       if (zMed < 2.3) { g.add(viga([a[0], tope(a), a[1]], [b[0], tope(b), b[1]], 0.05, 0.04, M_.acero)); lamas(g, a, b, zMed + 0.03, Math.min(tope(a), tope(b)) - 0.03, M_.aceroGris); }
     }
+    g.userData.lado = horiz ? (y0 === 0 ? 'A' : y0 === W ? 'B' : 'interior') : (x0 === 0 ? 'mercado' : x0 === L ? 'calle' : 'interior');
     alto.add(sombra(g));
     if (tipo === 'panel') {            // mural hacia la zona de peso libre
       const mur = new THREE.Mesh(new THREE.PlaneGeometry(largo - 0.06, 1.38), new THREE.MeshStandardMaterial({ map: texMural(), roughness: 0.75 }));
@@ -368,6 +369,10 @@ const espejos = [];
     esp.position.set((a + b) / 2, 1.25, T + 0.022); F.add(esp); espejos.push(esp);
     for (let x = a + 1.0; x < b - 0.2; x += 1.0) F.add(muro(x - 0.003, T + 0.02, x + 0.003, T + 0.024, 0.35, 2.15, M_.negroMate));
   }
+}
+{ // tira LED de acento en el borde interior del parapeto
+  const y = D.H_PARAPETO - 0.03;
+  F.add(muro(0.3, W - T - 0.012, L - T, W - T, y, y + 0.018, M_.ledRojo), muro(L - T - 0.012, T, L - T, W - T, y, y + 0.018, M_.ledRojo), muro(D.espejos[0][1] + 0.1, T, L - T, T + 0.012, y, y + 0.018, M_.ledRojo));
 }
 // marco de la llegada de escalera (puerta-reja abierta) y rótulo de ingreso
 {
@@ -492,17 +497,15 @@ for (const [x, y] of D.porta_discos) { const p = portaDiscos(); p.position.set(x
   F.add(sombra(g));
 }
 function planta(x, z, s = 1) {
-  const g = G();
-  g.add(caja(0.34 * s, 0.36 * s, 0.34 * s, M_.negroMate, 0, 0.18 * s, 0));
-  for (let i = 0; i < 11; i++) {
-    const an = i * 2.4, incl = 0.12 + (i % 4) * 0.13, h = (0.75 + (i % 3) * 0.22) * s;
-    const hoja = new THREE.Mesh(new THREE.PlaneGeometry(0.085 * s, h), M_.hoja);
-    hoja.position.set(Math.sin(an) * incl * h * 0.4, 0.36 * s + h * 0.48, Math.cos(an) * incl * h * 0.4);
-    hoja.rotation.set(Math.cos(an) * incl, an, -Math.sin(an) * incl, 'YXZ'); hoja.castShadow = true; g.add(hoja);
+  const g = G(), verde = [0x2f7d3b, 0x3a8f45, 0x276b33];
+  g.add(caja(0.36 * s, 0.4 * s, 0.36 * s, M_.negroMate, 0, 0.2 * s, 0), tubo([0, 0.4 * s, 0], [0, 0.95 * s, 0], 0.018 * s, M_.maderaOsc, 8));
+  for (let i = 0; i < 9; i++) {
+    const an = i * 2.4, r = (0.2 + (i % 3) * 0.05) * s, e = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), std(verde[i % 3], 0.85, 0));
+    e.position.set(Math.sin(an) * 0.17 * s, (0.95 + (i % 4) * 0.16) * s, Math.cos(an) * 0.17 * s); e.scale.y = 0.85; e.castShadow = true; g.add(e);
   }
   g.position.set(x, 0, z); return g;
 }
-F.add(planta(4.35, 2.42, 0.9), planta(L - 0.42, 6.22 - 4.3, 1.0), planta(D.zona_funcional[0] - 0.05, 4.45, 0.8), planta(6.78, 3.95 + 0.0, 0.0001));
+F.add(planta(4.33, 2.44, 0.8), planta(L - 0.45, 1.88, 0.85));
 
 // ------------------------------------------------------------------ luminarias, ventiladores, señalética
 const luces = [];
@@ -547,11 +550,9 @@ const luces = [];
   const pon = (p, x, z, giro) => { p.position.set(x, 0, z); p.rotation.y = giro; g.add(sombra(p)); return p; };
   pon(persona({ polo: 3, brazoI: [0.25, 0.9, 0.1, 1.3], brazoD: [0.2, 0.2, 0.1, 0.5] }), 5.62, 3.05, Math.PI / 2);                       // recepcionista
   pon(persona({ polo: 2, alto: 1.64, brazoI: [0.15, 0.3, 0.1, 1.2], brazoD: [0.1, 0, 0.1, 0.1] }), 6.98, 2.95, -Math.PI / 2);            // socia en el mostrador
-  pon(persona({ polo: 0, pose: 'sentado', asiento: 0.46, brazoI: [0.25, 0.2, 0.15, 2.3], brazoD: [0.25, 0.2, 0.15, 0.4] }), D.maquinas[4].c[0], D.maquinas[4].c[1] + 0.38, 0);   // banco inclinado
   pon(persona({ polo: 1, alto: 1.76, brazoI: [1.25, 0.25, 1.1, 0.5], brazoD: [1.25, 0.25, 1.1, 0.5], paso: 0.16 }), D.maquinas[8].c[0], 5.0, Math.PI);   // crossover
   pon(persona({ polo: 4, alto: 1.62, brazoI: [2.9, 0.05, 2.9, 0.1], brazoD: [2.9, 0.05, 2.9, 0.1] }), D.zona_funcional[0] + 1.3, D.zona_funcional[3] - 1.0, -0.5);  // estiramiento
   pon(persona({ polo: 5, alto: 1.72, brazoI: [0.1, -0.35, 0.1, 0.2], brazoD: [0.1, 0.4, 0.1, 0.7], paso: 0.24 }), 4.2, 4.0, 1.1);        // caminando al vestuario
-  pon(persona({ polo: 3, pose: 'sentado', asiento: 0.56, alto: 1.74, brazoI: [0.3, 0.3, 0.2, 0.9], brazoD: [0.3, 0.3, 0.2, 0.9] }), D.maquinas[6].c[0] + 0.08, D.maquinas[6].c[1] + 0.14, -Math.PI / 2);  // extensión
   if (OPC.gente === '0' || OPC.gente === false) g.visible = false;
 }
 
@@ -621,25 +622,28 @@ for (const [x, z, k] of [[2.6, 5.0, 1], [5.9, 4.3, 1], [9.2, 1.6, 1], [9.2, 5.0,
 const luzTrag = [];
 for (const r of D.translucido) { const p = new THREE.PointLight(0xfff6e6, 1, 9, 1.5); p.position.set((r[0] + r[2]) / 2, hTecho((r[0] + r[2]) / 2) + 0.2, (r[1] + r[3]) / 2); scene.add(p); luzTrag.push(p); }
 const luzMarca = new THREE.PointLight(0xff5a4a, 1, 4.5, 1.8); luzMarca.position.set(5.6, 1.6, 3.0); scene.add(luzMarca);
+const luzRoja = [[L - 1.2, 0.9, W - 0.6], [9.5, 0.9, W - 0.6], [L - 0.6, 0.9, 2.4], [3.0, 0.9, W - 0.6]].map(([x, y, z]) => { const p = new THREE.PointLight(0xff2a2a, 0, 5.5, 1.7); p.position.set(x, y, z); scene.add(p); return p; });
 
 function modo(noche) {
   NOCHE = noche;
   const u = cielo.material.uniforms;
   if (noche) {
     u.cenit.value.set(0x070b18); u.horizonte.value.set(0x27314f); u.suelo.value.set(0x0b0d12);
-    hemi.intensity = 0.16; hemi.color.set(0x8fa3d6); hemi.groundColor.set(0x1b1b20);
+    hemi.intensity = 0.07; hemi.color.set(0x8fa3d6); hemi.groundColor.set(0x1b1b20);
     sol.intensity = 0.25; sol.color.set(0x8fa6e0); sol.position.set(L / 2 - 14, 22, W / 2 - 9);
-    puntos.forEach((p) => { p.intensity = 15 * p.userData.k; p.color.set(0xfff1dc); });
+    puntos.forEach((p) => { p.intensity = 8.5 * p.userData.k; p.color.set(0xffe9cf); });
+    luzRoja.forEach((p) => { p.intensity = 4.5; });
     luzTrag.forEach((p) => { p.intensity = 0; });
-    luzMarca.intensity = 5;
+    luzMarca.intensity = 6;
     M_.transl.emissiveIntensity = 0.02; M_.transl.color.set(0x56607a); M_.poli.emissiveIntensity = 0.02; M_.poli.color.set(0x8f98ab);
-    M_.luz.emissiveIntensity = 0.5; M_.luz.emissive.set(0xfff1dc); M_.led.emissiveIntensity = 4.5; M_.ledRojo.emissiveIntensity = 3.2;
-    scene.environmentIntensity = 0.12; renderer.toneMappingExposure = 1.15;
+    M_.luz.emissiveIntensity = 0.3; M_.luz.emissive.set(0xffe2c2); M_.led.emissiveIntensity = 5; M_.ledRojo.emissiveIntensity = 5;
+    scene.environmentIntensity = 0.06; renderer.toneMappingExposure = 1.0;
   } else {
     u.cenit.value.set(0x3f86d8); u.horizonte.value.set(0xd3e6f3); u.suelo.value.set(0x7f8f76);
     hemi.intensity = 0.95; hemi.color.set(0xffffff); hemi.groundColor.set(0x55555c);
     sol.intensity = 3.4; sol.color.set(0xfff0d8); sol.position.set(L / 2 + 17, 13.5, W / 2 - 7.5);
     puntos.forEach((p) => { p.intensity = 5.5 * p.userData.k; p.color.set(0xffffff); });
+    luzRoja.forEach((p) => { p.intensity = 0; });
     luzTrag.forEach((p) => { p.intensity = 13; });
     luzMarca.intensity = 2.2;
     M_.transl.emissiveIntensity = 1.25; M_.transl.color.set(0xffffff); M_.poli.emissiveIntensity = 0.34; M_.poli.color.set(0xf2f5f5);
@@ -647,6 +651,7 @@ function modo(noche) {
     scene.environmentIntensity = 0.42; renderer.toneMappingExposure = 1.06;
   }
   grupos.entorno.traverse((m) => { if (m.userData.nube) m.visible = !noche; });
+  grupos.entorno.traverse((m) => { if (m.isMesh && m.material.isMeshBasicMaterial && m.material.vertexColors) m.material.color.set(noche ? 0x18202e : 0xffffff); });
 }
 modo(NOCHE);
 
@@ -672,7 +677,9 @@ if (controles) { controles.enableDamping = true; controles.maxPolarAngle = Math.
 
 function pintar() { if (composer) composer.render(); else renderer.render(scene, camera); }
 const APP = {
-  D, scene, camera, renderer, grupos, hTecho,
+  D, scene, camera, renderer, grupos, hTecho, cielo,
+  lados(vis) { grupos.cerramientoAlto.children.forEach((c) => { const l = c.userData.lado; if (l && l in vis) c.visible = vis[l]; }); },
+  estudio(si) { const u = cielo.material.uniforms; if (si) { u.cenit.value.set(0xdfe3e6); u.horizonte.value.set(0xf1f0ec); u.suelo.value.set(0xe7e5e0); } },
   vista(cam, obj, fov = 55) {
     camera.fov = fov; camera.position.set(cam[0], cam[1], cam[2]); camera.lookAt(obj[0], obj[1], obj[2]); camera.updateProjectionMatrix();
     if (controles) { controles.target.set(obj[0], obj[1], obj[2]); controles.update(); }

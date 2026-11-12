@@ -27,19 +27,20 @@ const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--ena
 
 // cam / obj en metros del modelo: [x, altura, y].  techo: se muestra la cubierta.  alto: cerramiento sobre parapeto.
 export const VISTAS = [
-  { nombre: '01_aerea_general', cam: [13.6, 12.6, 16.4], obj: [7.2, 0, 3.6], fov: 38, techo: false, entorno: false },
-  { nombre: '02_llegada_y_recepcion', cam: [8.3, 1.62, 4.7], obj: [5.5, 1.2, 2.8], fov: 60, techo: true },
-  { nombre: '03_peso_libre_y_espejos', cam: [12.25, 1.6, 4.05], obj: [8.9, 1.0, 0.9], fov: 60, techo: true },
-  { nombre: '04_sala_hacia_la_calle', cam: [7.0, 1.66, 3.78], obj: [13.6, 1.1, 3.3], fov: 66, techo: true },
+  { nombre: '01_aerea_general', cam: [13.1, 11.6, 15.4], obj: [7.45, 0, 3.4], fov: 36, techo: false, entorno: false, ocultar: ['B', 'calle'], gente: true },
+  { nombre: '02_llegada_y_recepcion', cam: [8.35, 1.62, 4.75], obj: [5.5, 1.2, 2.8], fov: 60, techo: true },
+  { nombre: '03_peso_libre_y_espejos', cam: [11.9, 1.62, 3.55], obj: [8.6, 0.95, 0.4], fov: 62, techo: true },
+  { nombre: '04_sala_hacia_la_calle', cam: [7.15, 1.7, 3.62], obj: [13.8, 1.0, 3.25], fov: 70, techo: true },
   { nombre: '05_tren_inferior_y_crossover', cam: [9.9, 1.65, 2.0], obj: [13.0, 0.8, 5.6], fov: 64, techo: true },
   { nombre: '06_sala_desde_la_calle', cam: [14.35, 1.7, 1.75], obj: [7.5, 0.95, 4.2], fov: 68, techo: true },
-  { nombre: '07_lockers_y_servicios', cam: [2.1, 1.62, 5.5], obj: [4.0, 1.15, 2.4], fov: 66, techo: true },
-  { nombre: '08_zona_oeste', cam: [7.0, 1.7, 3.6], obj: [1.6, 0.8, 5.4], fov: 68, techo: true },
-  { nombre: '09_noche_recepcion', cam: [8.3, 1.62, 4.7], obj: [5.5, 1.2, 2.8], fov: 60, techo: true, noche: true },
-  { nombre: '10_noche_sala', cam: [7.0, 1.66, 3.78], obj: [13.6, 1.1, 3.3], fov: 66, techo: true, noche: true },
-  { nombre: '11_aerea_desde_la_calle', cam: [23.5, 9.5, -3.2], obj: [7.6, 0.2, 3.5], fov: 34, techo: false, entorno: false },
+  { nombre: '07_lockers_y_servicios', cam: [3.05, 1.62, 4.4], obj: [4.3, 1.15, 2.2], fov: 72, techo: true },
+  { nombre: '08_zona_oeste', cam: [6.85, 1.72, 4.62], obj: [1.5, 0.75, 5.1], fov: 68, techo: true },
+  { nombre: '09_noche_recepcion', cam: [8.35, 1.62, 4.75], obj: [5.5, 1.2, 2.8], fov: 60, techo: true, noche: true },
+  { nombre: '10_noche_sala', cam: [7.15, 1.7, 3.62], obj: [13.8, 1.0, 3.25], fov: 70, techo: true, noche: true },
+  { nombre: '11_aerea_desde_la_calle', cam: [21.2, 8.6, 11.6], obj: [7.9, 0.2, 3.2], fov: 34, techo: false, entorno: false, ocultar: ['B', 'calle'], gente: true },
   { nombre: '12_planta_3d', cam: [7.485, 21.5, 3.33], obj: [7.485, 0, 3.325], fov: 30, techo: false, entorno: false, cenital: true },
-  { nombre: '13_exterior_con_techo', cam: [25.0, 7.5, 15.5], obj: [7.5, 0.6, 3.3], fov: 36, techo: true, entorno: true, gente: false },
+  { nombre: '13_vista_general_alta', cam: [14.55, 2.18, 4.08], obj: [5.5, 0.35, 3.1], fov: 76, techo: true },
+  { nombre: '14_noche_desde_la_calle', cam: [14.35, 1.7, 1.75], obj: [7.5, 0.95, 4.2], fov: 68, techo: true, noche: true },
 ];
 const page = await browser.newPage({ viewport: { width: ancho, height: alto }, deviceScaleFactor: 1 });
 const errores = [];
@@ -57,8 +58,11 @@ for (const v of VISTAS) {
   await page.evaluate((v) => {
     const A = window.APP, g = A.grupos;
     g.techo.visible = v.techo; g.techoBano.visible = v.techo; g.cerramientoAlto.visible = true;
-    g.entorno.visible = v.entorno !== false; g.gente.visible = v.gente !== false;
+    g.entorno.visible = v.entorno !== false; g.gente.visible = v.gente === true;
     A.modo(!!v.noche);
+    A.lados({ A: true, B: true, calle: true, mercado: true });
+    if (v.ocultar) A.lados(Object.fromEntries(v.ocultar.map((l) => [l, false])));
+    if (v.entorno === false) A.estudio(true);
     if (v.cenital) { A.camera.up.set(0, 0, -1); } else { A.camera.up.set(0, 1, 0); }
     A.vista(v.cam, v.obj, v.fov);
     A.pintar();

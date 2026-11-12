@@ -422,9 +422,11 @@ export function crearMaquina(m) {
 // ------------------------------------------------------------------ figuras humanas (maniquí deportivo)
 const ROPA = [0xd81f26, 0x1f6f8b, 0xf2f2ef, 0x2b2d31, 0xe2b007, 0x4b3f72];
 export function persona(o = {}) {
-  const { pose = 'pie', polo = 0, alto = 1.7, brazoI = [0.12, 0, 0.1, 0], brazoD = [0.12, 0, 0.1, 0], piel = MAT.piel } = o;
+  const { pose = 'pie', polo = 0, alto = 1.7, brazoI = [0.12, 0, 0.1, 0], brazoD = [0.12, 0, 0.1, 0], mono = true } = o;
   const k = alto / 1.7, g = G();
-  const mPolo = std(ROPA[polo % ROPA.length], 0.8, 0), mShort = std(0x1a1b1e, 0.85, 0), mZap = std(0xeeeeee, 0.7, 0);
+  const mPolo = mono ? std(0xc9ccd1, 0.85, 0) : std(ROPA[polo % ROPA.length], 0.8, 0);
+  const mShort = mono ? std(0x9da1a8, 0.85, 0) : std(0x1a1b1e, 0.85, 0), mZap = mono ? mShort : std(0xeeeeee, 0.7, 0);
+  const piel = mono ? mPolo : MAT.piel;
   const sentado = pose === 'sentado';
   const yC = sentado ? (o.asiento ?? 0.5) + 0.1 : 0.93 * k;        // cadera
   const yH = yC + 0.5 * k;                                         // hombros
@@ -432,7 +434,7 @@ export function persona(o = {}) {
   g.add(capsula([-0.07 * k, yC, 0], [0.07 * k, yC, 0], 0.115 * k, mShort));
   const cab = M(new THREE.SphereGeometry(0.105 * k, 20, 16), piel); cab.position.set(0, yH + 0.2 * k, 0.01); g.add(cab);
   g.add(capsula([0, yH + 0.02, 0], [0, yH + 0.1 * k, 0], 0.045 * k, piel));
-  const pelo = M(new THREE.SphereGeometry(0.108 * k, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), std(0x1a1512, 0.9, 0)); pelo.position.set(0, yH + 0.215 * k, -0.005); g.add(pelo);
+  if (!mono) { const pelo = M(new THREE.SphereGeometry(0.108 * k, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), std(0x1a1512, 0.9, 0)); pelo.position.set(0, yH + 0.215 * k, -0.005); g.add(pelo); }
   // piernas
   for (const s of [-1, 1]) {
     const cx = s * 0.095 * k;
