@@ -1,0 +1,9 @@
+{
+  "name": "gimnasio-azotea-render3d",
+  "private": true,
+  "type": "module",
+  "description": "Modelo 3D (three.js) y vistas del gimnasio en azotea",
+  "dependencies": {
+    "three": "0.170.0"
+  }
+}
