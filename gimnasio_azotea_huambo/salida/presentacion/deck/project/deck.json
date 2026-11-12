@@ -1,0 +1,19 @@
+{
+  "v": 5,
+  "createdOnFiles": {"v": 1, "at": "2026-11-12T21:00:00Z"},
+  "lists": "css",
+  "format": {"v": 1, "shared": ["project/deck.css"]},
+  "title": "Azotea Gym — Presentación del proyecto",
+  "cover": "cover",
+  "order": ["cover", "idea", "existente", "zonas", "recepcion", "peso-libre", "sala", "tren-inferior", "servicios", "noche", "cambios", "maquinas", "inversion", "recuperacion", "cronograma", "verificar", "cierre"],
+  "sections": {
+    "s1": {"description": "La propuesta: qué es Azotea Gym y cómo aprovecha lo que ya está construido.", "start": "cover"},
+    "s2": {"description": "Recorrido visual por la recepción, la sala, los servicios y la vista nocturna.", "start": "recepcion"},
+    "s3": {"description": "Números y ejecución: cambios al plano, máquinas, inversión, recuperación, plazo y verificaciones.", "start": "cambios"}
+  },
+  "faces": {
+    "oswald": {"family": "Oswald", "href": "https://fonts.googleapis.com/css2?family=Oswald:wght@400..700&display=swap"},
+    "inter": {"family": "Inter", "href": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"}
+  },
+  "designSystems": []
+}
