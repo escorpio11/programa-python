@@ -36,7 +36,30 @@ tanque elevado y los dos tragaluces (no se cubren).
 - Inversión referencial total con IGV: **S/ 121,294** (etapa de apertura S/ 115,033; mejoras S/ 6,260).
 - Punto de equilibrio con los supuestos de partida: 32 socios (mensualidad supuesta de S/ 70).
 
-## Decisiones de diseño
+## Versión B — con zona de cardio (`salida_B/`)
+
+Variante que añade **2 cintas de correr (Trotadora TTX18) y 2 bicicletas (Spinning FX18)** sin
+retirar ninguna de las 13 máquinas: 17 equipos, ocupación 45 % (la versión A tiene 38 %).
+
+- **Cardio en la esquina del lado mercado**, frente a un ventanal: es donde el techo es más alto
+  (2.73 m; un corredor de 1.85 m tiene 0.53 m libres), la cinta 1 queda sobre la viga del eje 6 y
+  los baños están a un paso. Detrás de las cintas queda 1.00 m de zona de seguridad marcada en el
+  piso y, después, 1.20 m de paso a los baños.
+- **Peso libre reunido**: el press plano pasa al centro de la sala este, junto al mancuernero y los
+  bancos. Las dominadas pasan al muro del fondo (sobre la viga del eje 2) y el hip thrust vuelve
+  casi a su sitio del plano base. Prensa, crossover, extensión, aductor, mancuernero y bancos no se
+  mueven.
+- **Lo que se cede**: se elimina la zona funcional de grass, el mostrador baja de 1.50 a 1.20 m y
+  varios pasos quedan en el mínimo (0.45 a 1.10 m).
+- **Inversión referencial con IGV: S/ 148,062** (máquinas S/ 80,300). Punto de equilibrio: 34 socios.
+- **Verificaciones adicionales**: potencia eléctrica contratada (las dos cintas suman unos 4.4 kW y
+  cada una lleva circuito propio) y efecto dinámico de las cintas sobre la losa.
+
+Mismos entregables que la versión A, con sufijo `_B`. Se regenera con
+`GYM_VERSION=B python3 generar.py`, `GYM_VERSION=B node render.mjs`,
+`GYM_VERSION=B node render_video.mjs` y `GYM_VERSION=B node presentacion_pdf.mjs`.
+
+## Decisiones de diseño (versión A)
 
 - **Recepción** junto a la llegada de la escalera: mostrador de 1.50 m, panel de marca
   retroiluminado y 12 lockers espalda con espalda. El muro del tragaluz E se cierra con

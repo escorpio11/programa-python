@@ -1,0 +1,105 @@
+/* Azotea Gym: negro carbón, hueso y rojo. Oswald para títulos, Inter para texto. */
+section {
+  font-family: 'Inter', Arial, sans-serif;
+  background: #121316;
+  color: #F4F2ED;
+  padding: 128px;
+  display: flex;
+  flex-direction: column;
+}
+h1, h2, h3 { font-family: 'Oswald', 'Arial Narrow', Arial, sans-serif; font-weight: 600; }
+
+.oscuro { background: #121316; color: #F4F2ED; }
+.claro { background: #F4F2ED; color: #17181B; }
+.rojo { background: #B8151B; color: #FFF8F5; }
+
+.ceja { font-size: 24px; font-weight: 600; letter-spacing: 5px; color: #FF7A7A; }
+.claro .ceja { color: #C4181F; }
+.rojo .ceja { color: #FFD9D6; }
+.titulo { font-size: 84px; line-height: 1.06; margin-top: 14px; }
+.texto { font-size: 32px; line-height: 1.42; color: #C9CBD0; }
+.claro .texto { color: #4A4D55; }
+.rojo .texto { color: #FFE9E6; }
+.nota { font-size: 24px; line-height: 1.4; color: #9DA1A8; }
+.claro .nota { color: #5E626B; }
+
+/* Diapositivas de foto a sangre */
+.foto { justify-content: flex-end; }
+.fondo { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; object-fit: cover; }
+.velo { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: linear-gradient(180deg, rgba(18,19,22,0) 30%, rgba(18,19,22,0.55) 62%, rgba(18,19,22,0.95) 100%); }
+.velo-total { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: linear-gradient(90deg, rgba(18,19,22,0.94) 0%, rgba(18,19,22,0.78) 46%, rgba(18,19,22,0.25) 100%); }
+.foto .texto { color: #E6E4DF; margin-top: 18px; width: 1300px; }
+
+/* Portada */
+.portada { justify-content: center; }
+.marca { font-size: 190px; line-height: 0.95; letter-spacing: 2px; }
+.marca-rojo { color: #FF4A4E; }
+.lema { font-size: 44px; font-family: 'Oswald', 'Arial Narrow', Arial, sans-serif; font-weight: 400; letter-spacing: 6px; color: #F4F2ED; margin-top: 30px; }
+.pie-portada { position: absolute; left: 128px; top: 900px; width: 1400px; font-size: 26px; color: #C9CBD0; }
+
+/* Cifras grandes */
+.cifras { display: flex; gap: 72px; margin-top: 120px; }
+.cifra { flex: 1; border-top: 4px solid #E02A2E; padding-top: 22px; }
+.cifra .num { font-family: 'Oswald', 'Arial Narrow', Arial, sans-serif; font-weight: 600; font-size: 156px; line-height: 1.05; color: #F4F2ED; }
+.claro .cifra .num { color: #17181B; }
+.cifra .rot { font-size: 32px; line-height: 1.35; color: #C9CBD0; margin-top: 8px; }
+.claro .cifra .rot { color: #4A4D55; }
+
+/* Dos columnas: texto + imagen */
+.dos { display: flex; gap: 64px; margin-top: 44px; align-items: flex-start; }
+.col { flex: 1; display: flex; flex-direction: column; gap: 22px; }
+.imagen { width: 960px; height: 540px; object-fit: cover; border-radius: 14px; }
+.plano { object-fit: contain; background: #FFFFFF; border-radius: 14px; }
+.punto { display: flex; gap: 20px; align-items: flex-start; }
+.punto .marca-punto { width: 14px; height: 14px; background: #E02A2E; border-radius: 7px; margin-top: 14px; }
+.punto .cuerpo { flex: 1; font-size: 30px; line-height: 1.38; color: #2B2D33; }
+.oscuro .punto .cuerpo { color: #E6E4DF; }
+.punto b { color: #17181B; }
+.oscuro .punto b { color: #FFFFFF; }
+
+/* Leyenda de zonas */
+.zona { display: flex; gap: 18px; align-items: center; }
+.zona .color { width: 34px; height: 34px; border-radius: 8px; }
+.zona .nombre { font-size: 29px; color: #2B2D33; }
+
+/* Tarjetas */
+.tarjetas { display: flex; gap: 36px; margin-top: 64px; }
+.tarjeta { flex: 1; background: #FFFFFF; border-radius: 16px; padding: 44px; display: flex; flex-direction: column; gap: 14px; border: 2px solid #E1DED6; }
+.oscuro .tarjeta { background: #1C1E22; border: 2px solid #2C2F35; }
+.rojo .tarjeta { background: #9C1016; border: 2px solid #C93A3F; }
+.tarjeta h3 { font-size: 40px; line-height: 1.15; }
+.tarjeta .cuerpo { font-size: 29px; line-height: 1.4; color: #4A4D55; }
+.oscuro .tarjeta .cuerpo { color: #C9CBD0; }
+.rojo .tarjeta .cuerpo { color: #FFE9E6; }
+.tarjeta .grande { font-family: 'Oswald', 'Arial Narrow', Arial, sans-serif; font-weight: 600; font-size: 104px; line-height: 1.05; color: #C4181F; }
+.oscuro .tarjeta .grande { color: #FF6B6E; }
+.tarjeta .eti { font-size: 24px; font-weight: 600; letter-spacing: 3px; color: #5E626B; }
+.destacada { border: 4px solid #C4181F; }
+
+/* Tablas */
+.tablas { display: flex; gap: 56px; margin-top: 40px; }
+.tabla { flex: 1; font-size: 27px; color: #17181B; }
+.total { display: flex; justify-content: space-between; align-items: baseline; margin-top: 30px; border-top: 4px solid #C4181F; padding-top: 18px; }
+.total .rot { font-size: 30px; color: #4A4D55; }
+.total .num { font-family: 'Oswald', 'Arial Narrow', Arial, sans-serif; font-weight: 600; font-size: 64px; color: #C4181F; }
+
+/* Barras de inversión */
+.barras { display: flex; flex-direction: column; gap: 28px; margin-top: 64px; }
+.barra { display: flex; align-items: center; gap: 24px; }
+.barra .rot { width: 560px; font-size: 30px; color: #E6E4DF; }
+.barra .pista { flex: 1; height: 52px; background: #1C1E22; border-radius: 8px; display: flex; }
+.barra .relleno { height: 52px; background: #E02A2E; border-radius: 8px; }
+.barra .gris { background: #8A8D93; }
+.barra .monto { width: 220px; font-size: 30px; font-weight: 600; text-align: right; color: #F4F2ED; }
+
+/* Cronograma */
+.crono { display: flex; flex-direction: column; gap: 14px; margin-top: 48px; }
+.fila { display: flex; align-items: center; gap: 20px; }
+.fila .act { width: 780px; font-size: 28px; line-height: 1.25; color: #E6E4DF; }
+.fila .sem { flex: 1; height: 50px; background: #1C1E22; border-radius: 6px; }
+.fila .on { background: #E02A2E; }
+.fila .cab { flex: 1; font-size: 24px; font-weight: 600; text-align: center; color: #9DA1A8; }
+
+/* Aparición suave */
+@keyframes subir { from { opacity: 0; transform: translateY(24px); } }
+.foto .titulo, .portada .marca { animation: subir 0.7s ease-out both; }

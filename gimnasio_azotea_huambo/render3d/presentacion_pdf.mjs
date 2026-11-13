@@ -7,9 +7,11 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
-const DECK = path.join(AQUI, '..', 'salida', 'presentacion', 'deck');
-const IMG = path.join(AQUI, '..', 'salida', 'presentacion', 'img');
-const salida = process.argv[2] || path.join(AQUI, '..', 'salida', 'Presentacion_Azotea_Gym.pdf');
+const VER = (process.env.GYM_VERSION || 'A').toUpperCase();
+const SAL = path.join(AQUI, '..', VER === 'A' ? 'salida' : 'salida_' + VER);
+const DECK = path.join(SAL, 'presentacion', 'deck');
+const IMG = path.join(SAL, 'presentacion', 'img');
+const salida = process.argv[2] || path.join(SAL, `Presentacion_Azotea_Gym${VER === 'A' ? '' : '_' + VER}.pdf`);
 const indice = JSON.parse(fs.readFileSync(path.join(DECK, 'project', 'deck.json'), 'utf8'));
 const blobs = JSON.parse(fs.readFileSync(path.join(DECK, 'blobs.json'), 'utf8'));
 const b64 = (f) => fs.readFileSync(f).toString('base64');
@@ -32,7 +34,7 @@ table{border-collapse:collapse;width:100%} th{text-align:left;font-weight:600;bo
 ${css}
 *{animation:none !important}
 </style></head><body>${cuerpo}</body></html>`;
-const tmp = path.join(AQUI, '..', 'salida', 'presentacion', '_presentacion.html');
+const tmp = path.join(SAL, 'presentacion', '_presentacion.html');
 fs.writeFileSync(tmp, html);
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
