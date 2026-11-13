@@ -394,6 +394,52 @@ function banco(w, d, incl = 40) {
   else g.add(viga([0, 0.2, z0 - 0.5], [0, 0.42, z0 - 0.5], 0.06, 0.06, MAT.marco));
   return g;
 }
+const PANTALLA = std(0x13202e, 0.25, 0.2, { emissive: 0x2f8fe0, emissiveIntensity: 0.7 });
+// Cinta de correr: +z = lado de entrada (atrás); la consola queda en -z
+function cinta(w, d) {
+  const g = G(), zF = -d / 2, zR = d / 2, xs = w / 2 - 0.09;
+  g.add(caja(w - 0.06, 0.15, d - 0.44, MAT.marco, 0, 0.145, 0.21));
+  g.add(caja(w - 0.32, 0.012, d - 0.5, MAT.caucho, 0, 0.226, 0.21));
+  for (const s of [-1, 1]) {
+    g.add(caja(0.11, 0.03, d - 0.46, MAT.gris, s * (w / 2 - 0.085), 0.236, 0.21));
+    g.add(viga([s * xs, 0.26, zF + 0.3], [s * xs, 1.33, zF + 0.13], 0.07, 0.09, MAT.marco));
+    g.add(tubo([s * xs, 1.14, zF + 0.17], [s * xs, 1.06, zF + 0.86], 0.022, MAT.caucho));
+    g.add(tubo([s * xs, 1.06, zF + 0.86], [s * xs, 0.98, zF + 0.9], 0.022, MAT.caucho));
+    g.add(caja(0.09, 0.05, 0.12, MAT.marco2, s * (w / 2 - 0.08), 0.03, zR - 0.14), caja(0.09, 0.05, 0.12, MAT.marco2, s * (w / 2 - 0.08), 0.03, zF + 0.16));
+  }
+  g.add(cojin(w - 0.04, 0.27, 0.52, MAT.marco2, 0, 0.205, zF + 0.28, 0.07));                 // capó del motor
+  g.add(caja(w - 0.3, 0.012, 0.3, MAT.rojo, 0, 0.344, zF + 0.28));
+  const con = cojin(w - 0.1, 0.36, 0.09, MAT.marco2, 0, 1.43, zF + 0.13, 0.03); con.rotation.x = -0.45; g.add(con);
+  const pan = caja(w * 0.5, 0.2, 0.008, PANTALLA, 0, 1.455, zF + 0.178); pan.rotation.x = -0.45; pan.castShadow = false; g.add(pan);
+  g.add(tubo([-xs, 1.2, zF + 0.22], [xs, 1.2, zF + 0.22], 0.02, MAT.caucho));
+  g.add(tubo([-(w / 2 - 0.12), 0.15, zR - 0.02], [w / 2 - 0.12, 0.15, zR - 0.02], 0.045, MAT.gris, 16));
+  return g;
+}
+// Bicicleta estática tipo spinning: +z = lado de entrada (atrás); el manubrio queda en -z
+function bici(w, d) {
+  const g = G(), zF = -d / 2, zR = d / 2, zV = zF + 0.34;
+  for (const z of [zF + 0.1, zR - 0.1]) g.add(viga([-w / 2 + 0.03, 0.04, z], [w / 2 - 0.03, 0.04, z], 0.07, 0.06, MAT.marco));
+  g.add(viga([0, 0.07, zF + 0.1], [0, 0.07, zR - 0.1], 0.07, 0.06, MAT.marco));
+  const vol = M(new THREE.CylinderGeometry(0.24, 0.24, 0.05, 40), MAT.marco2); vol.rotation.z = Math.PI / 2; vol.position.set(0, 0.34, zV); g.add(vol);
+  const aro = M(new THREE.CylinderGeometry(0.19, 0.19, 0.056, 36), MAT.rojo); aro.rotation.z = Math.PI / 2; aro.position.set(0, 0.34, zV); g.add(aro);
+  const cub = M(new THREE.CylinderGeometry(0.06, 0.06, 0.07, 20), MAT.cromo); cub.rotation.z = Math.PI / 2; cub.position.set(0, 0.34, zV); g.add(cub);
+  g.add(caja(0.09, 0.2, 0.34, MAT.marco, 0, 0.6, zV + 0.02));                                   // guarda del volante
+  g.add(viga([0, 0.1, 0.1], [0, 0.66, zV + 0.16], 0.06, 0.08, MAT.marco));
+  g.add(viga([0, 0.1, 0.1], [0, 0.84, 0.3], 0.055, 0.075, MAT.marco));
+  g.add(viga([0, 0.66, zV + 0.16], [0, 1.0, zF + 0.3], 0.055, 0.065, MAT.marco));
+  g.add(tubo([0, 0.84, 0.3], [0, 0.96, 0.34], 0.018, MAT.cromo, 10));
+  g.add(cojin(0.17, 0.06, 0.27, MAT.tapiz, 0, 0.99, 0.35, 0.025));
+  g.add(tubo([0, 1.0, zF + 0.3], [0, 1.1, zF + 0.27], 0.016, MAT.cromo, 10));
+  g.add(tubo([-0.21, 1.1, zF + 0.27], [0.21, 1.1, zF + 0.27], 0.016, MAT.caucho, 10));
+  for (const s of [-1, 1]) g.add(tubo([s * 0.21, 1.1, zF + 0.27], [s * 0.2, 1.13, zF + 0.08], 0.016, MAT.caucho, 10));
+  g.add(caja(0.14, 0.09, 0.02, PANTALLA, 0, 1.17, zF + 0.24));
+  g.add(tubo([-0.1, 0.3, 0.1], [0.1, 0.3, 0.1], 0.02, MAT.cromo, 10));
+  for (const s of [-1, 1]) {
+    g.add(viga([s * 0.1, 0.3, 0.1], [s * 0.1, 0.3 - s * 0.14, 0.1 + s * 0.09], 0.02, 0.03, MAT.cromo));
+    g.add(caja(0.09, 0.02, 0.07, MAT.caucho, s * 0.15, 0.3 - s * 0.14, 0.1 + s * 0.09));
+  }
+  return g;
+}
 export function portaDiscos() {
   const g = G();
   g.add(viga([-0.28, 0.03, 0], [0.28, 0.03, 0], 0.07, 0.06, MAT.marco));
@@ -406,7 +452,7 @@ export function portaDiscos() {
 
 const FAB = {
   mancuernero, porta_barras: portaBarras, triceps, biceps, extension, aductor, crossover, prensa,
-  hip_thrust: hipThrust, press_plano: pressPlano, dominadas, banco,
+  hip_thrust: hipThrust, press_plano: pressPlano, dominadas, banco, cinta, bici,
 };
 const GIRO = { S: 0, N: Math.PI, E: Math.PI / 2, O: -Math.PI / 2 };   // frente local +z -> dirección en planta
 let _nBanco = 0;

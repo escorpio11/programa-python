@@ -6,7 +6,7 @@ import ezdxf
 import diseno as D
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
-SALIDA = os.path.join(AQUI, "salida")
+SALIDA = D.SALIDA
 CAPAS = {  # nombre: color ACI
     "G-EJES": 8, "G-MUROS-PARAPETO": 7, "G-MUROS-BANOS": 7, "G-COLUMNAS": 7, "G-TRAGALUCES": 9, "G-ESCALERA": 9, "G-TANQUE-LAVADERO": 5,
     "G-MAQUINAS": 4, "G-MAQUINAS-TEXTO": 4, "G-RECEPCION": 1, "G-PISOS": 3, "G-CERRAMIENTO": 6, "G-LUMINARIAS": 2, "G-ELECTRICO": 1,
@@ -87,8 +87,10 @@ def generar():
     dim = doc.dimstyles.get("EZDXF")
     for p1, p2, base in (((0, Y(D.W)), (D.L, Y(D.W)), (0, Y(D.W + 0.9))), ((D.L, 0), (D.L, Y(D.W)), (D.L + 0.7, 0))):
         d = msp.add_linear_dim(base=base, p1=p1, p2=p2, angle=0 if p1[1] == p2[1] else 90, dimstyle="EZDXF", override={"dimtxt": 0.14, "dimasz": 0.1, "dimexe": 0.05, "dimexo": 0.05, "dimdec": 2}, dxfattribs={"layer": "G-COTAS"}); d.render()
-    texto("AZOTEA GYM - PLANTA DE DISTRIBUCION PROPUESTA (m). Verificar medidas en obra.", D.L / 2, D.W + 1.5, 0.2)
-    ruta = os.path.join(SALIDA, "Azotea_Gym_planta.dxf")
+    texto("AZOTEA GYM - PLANTA DE DISTRIBUCION%s (m). Verificar medidas en obra." % (" VERSION B CON CARDIO" if D.VERSION == "B" else " PROPUESTA"), D.L / 2, D.W + 1.5, 0.2)
+    if D.ZONA_SEGURIDAD:
+        rect(D.ZONA_SEGURIDAD, "G-SEGURIDAD"); texto("ZONA LIBRE DE SEGURIDAD", (D.ZONA_SEGURIDAD[0] + D.ZONA_SEGURIDAD[2]) / 2, (D.ZONA_SEGURIDAD[1] + D.ZONA_SEGURIDAD[3]) / 2, 0.08, "G-SEGURIDAD")
+    ruta = os.path.join(SALIDA, "Azotea_Gym_planta%s.dxf" % D.SUFIJO)
     doc.saveas(ruta)
     return ruta
 

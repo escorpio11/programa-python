@@ -11,13 +11,26 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const TIPOS = { '.js': 'text/javascript', '.json': 'application/json', '.html': 'text/html' };
-const salida = process.argv[2] || path.join(AQUI, '..', 'salida', 'Recorrido_Azotea_Gym.mp4');
+const VER = (process.env.GYM_VERSION || 'A').toUpperCase();
+const SAL = VER === 'A' ? 'salida' : 'salida_' + VER;
+const salida = process.argv[2] || path.join(AQUI, '..', SAL, `Recorrido_Azotea_Gym${VER === 'A' ? '' : '_' + VER}.mp4`);
 const ancho = +(process.argv[3] || 1280), alto = +(process.argv[4] || 720), fps = +(process.argv[5] || 20), porTramo = +(process.argv[6] || 40);
-const tmp = path.join(AQUI, '..', 'salida', '_tmp', 'cuadros');
+const tmp = path.join(AQUI, '..', 'salida', '_tmp', 'cuadros' + VER);
 fs.rmSync(tmp, { recursive: true, force: true }); fs.mkdirSync(tmp, { recursive: true });
 
 // Recorrido: [cámara x, altura, y] -> [mira x, altura, y]
-const CLAVES = [
+const CLAVES_B = [
+  [[7.02, 1.60, 2.50], [5.7, 1.25, 3.3]],     // sale de la escalera
+  [[7.3, 1.62, 3.9], [5.4, 1.2, 2.9]],        // recepción
+  [[5.3, 1.62, 3.95], [3.4, 1.1, 2.6]],       // lockers y baños
+  [[3.6, 1.65, 3.5], [1.9, 0.9, 5.6]],        // zona de cardio
+  [[5.0, 1.65, 3.97], [8.3, 0.9, 5.4]],       // hip thrust y prensa
+  [[7.6, 1.68, 3.6], [12.5, 1.0, 3.3]],       // sala hacia la calle
+  [[9.95, 1.65, 3.5], [9.0, 0.9, 0.5]],       // peso libre y espejos
+  [[10.2, 1.65, 4.95], [13.4, 0.9, 5.3]],     // crossover y tren inferior
+  [[12.58, 1.75, 3.9], [8.0, 0.9, 3.0]],      // vista final hacia la recepción
+];
+const CLAVES_A = [
   [[7.02, 1.60, 2.50], [5.7, 1.25, 3.3]],     // sale de la escalera
   [[7.3, 1.62, 3.95], [5.4, 1.2, 2.9]],       // recepción
   [[5.6, 1.62, 4.5], [3.5, 1.1, 2.6]],        // lockers y baños
@@ -28,6 +41,7 @@ const CLAVES = [
   [[11.6, 1.65, 3.2], [13.6, 0.9, 5.6]],      // tren inferior
   [[12.9, 1.75, 1.95], [7.5, 0.9, 4.5]],      // vista final hacia la recepción
 ];
+const CLAVES = VER === 'B' ? CLAVES_B : CLAVES_A;
 const cr = (p0, p1, p2, p3, t) => p1.map((_, i) => 0.5 * ((2 * p1[i]) + (-p0[i] + p2[i]) * t + (2 * p0[i] - 5 * p1[i] + 4 * p2[i] - p3[i]) * t * t + (-p0[i] + 3 * p1[i] - 3 * p2[i] + p3[i]) * t * t * t));
 const suave = (t) => t;          // velocidad constante entre claves
 const cuadros = [];
@@ -50,7 +64,7 @@ const PUERTO = 8794;
 await new Promise((ok) => srv.listen(PUERTO, ok));
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl', '--disable-gpu-sandbox'] });
 const page = await browser.newPage({ viewport: { width: ancho, height: alto }, deviceScaleFactor: 1 });
-await page.goto(`http://localhost:${PUERTO}/web/index.html?w=${ancho}&h=${alto}&ao=0`, { waitUntil: 'commit' });
+await page.goto(`http://localhost:${PUERTO}/web/index.html?w=${ancho}&h=${alto}&ao=0&ver=${VER}`, { waitUntil: 'commit' });
 await page.waitForFunction('window.APP && window.APP.listo === true', null, { timeout: 300000, polling: 500 });
 await page.evaluate(() => { const g = window.APP.grupos; g.techo.visible = true; g.techoBano.visible = true; g.gente.visible = false; window.APP.modo(false); });
 const t0 = Date.now();

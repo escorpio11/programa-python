@@ -28,6 +28,11 @@ import math
 import os
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
+# Versión del proyecto: A = propuesta original; B = con zona de cardio (2 cintas + 2 bicicletas).
+#   GYM_VERSION=B python3 generar.py
+VERSION = os.environ.get("GYM_VERSION", "A").upper()
+SUFIJO = "" if VERSION == "A" else "_" + VERSION
+SALIDA = os.path.join(AQUI, "salida" + SUFIJO)
 
 # --------------------------------------------------------------------------- base
 DX = 0.35                      # corrimiento por medida de obra del bano
@@ -277,6 +282,58 @@ ZONAS = {
     "tren_inferior": {"nombre": "Tren inferior", "color": "#3FA37C"},
     "funcional": {"nombre": "Funcional y estiramiento", "color": "#6BBF59"},
 }
+ZONA_SEGURIDAD = None        # franja libre detrás de las cintas de correr (versión B)
+
+
+def _version_b():
+    """Versión B: se añaden 2 cintas de correr y 2 bicicletas sin retirar ninguna de las 13 máquinas.
+    Cardio en la esquina del lado mercado (techo más alto, viga del eje 6, baños a un paso); el press plano
+    pasa al centro de la sala este junto al resto del peso libre; las dominadas al muro del fondo sobre la
+    viga del eje 2; el hip thrust vuelve casi a su sitio del plano base.  Se elimina la zona funcional."""
+    global ZONA_FUNCIONAL, PORTA_DISCOS, ACCESORIOS, PISOS, CERRAMIENTO, MAQUINAS_P1, ZONA_SEGURIDAD
+    mov = {
+        "M02": {"c": (14.44, 4.08), "frente": "O"},        # porta barras: entre extensión y aductor
+        "M03": {"c": (11.505, 0.88)},                       # tríceps: 1.00 m hacia la escalera
+        "M04": {"c": (14.16, 0.79)},                        # bíceps: 0.15 m hacia la calle
+        "M05": {"c": (8.325, 2.24)}, "M06": {"c": (9.425, 2.24)},
+        "M11": {"c": (5.50, 5.47)},                         # hip thrust: frente a la recepción (casi como en el plano base)
+        "M12": {"c": (11.335, 3.40), "frente": "O"},        # press plano: centro de la sala este (peso libre reunido)
+        "M13": {"c": (12.835, 0.775), "frente": "S"},       # dominadas: muro del fondo, sobre la viga del eje 2
+    }
+    for m in MAQUINAS:
+        m.update(mov.get(m["id"], {}))
+    cinta = {"tipo": "cinta", "nombre": "Trotadora TTX18", "cat": "pág. 26", "precio": 9500, "alto": 1.62, "w": 0.90, "d": 2.10,
+             "frente": "N", "peso_kg": 190, "zona": "cardio", "dim_cat": "162 x 90 x 210 cm", "factor_usuario": 2.5}
+    bici = {"tipo": "bici", "nombre": "Spinning FX18", "cat": "pág. 26", "precio": 2600, "alto": 1.28, "w": 0.60, "d": 1.25,
+            "frente": "E", "peso_kg": 55, "zona": "cardio", "dim_cat": "128 x 60 x 125 cm"}
+    MAQUINAS.extend([dict(cinta, id="M14", c=(2.45, 5.30)), dict(cinta, id="M15", c=(3.50, 5.30)),
+                     dict(bici, id="M16", c=(0.845, 4.05)), dict(bici, id="M17", c=(0.845, 5.25))])
+    ZONAS.pop("funcional")
+    ZONAS["cardio"] = {"nombre": "Cardio", "color": "#2BB3C0"}
+    ZONA_FUNCIONAL = None
+    ZONA_SEGURIDAD = (2.00, 3.25, 3.95, 4.25)
+    for k in ("mostrador", "zona_personal", "panel_marca"):         # mostrador de 1.20 m: hall de 1.10 m frente al hip thrust
+        r = RECEPCION[k]; RECEPCION[k] = (r[0], r[1], r[2], 3.42)
+    PORTA_DISCOS = [(9.09, 6.10)]
+    ACCESORIOS = [(d, u, (1 if d.startswith("Porta discos") else q), pu, ref) for d, u, q, pu, ref in ACCESORIOS]
+    ACCESORIOS = [(d.replace("Porta discos (junto a prensa y press plano)", "Porta discos (junto a la prensa)"), u, q, pu, ref) for d, u, q, pu, ref in ACCESORIOS]
+    PISOS = [p for p in PISOS if p["id"] != "grass"]
+    PISOS.insert(2, {"id": "caucho_cardio", "nombre": "Caucho 25 mm (cintas de correr)", "rect": (1.85, 4.10, 4.10, W - T)})
+    CERRAMIENTO = [c for c in CERRAMIENTO if not ((c[1] == W and c[3] == W) or (c[0] == 0.0 and c[2] == 0.0))]
+    CERRAMIENTO += [(0.0, W, 4.30, W, "ventanal"), (4.30, W, L, W, "policarbonato"),          # ventanal frente al cardio
+                    (0.0, 2.05, 0.0, 3.50, "policarbonato"), (0.0, 3.50, 0.0, W, "ventanal")]
+    VENTILADORES.append((0.35, 6.05, "E"))
+    TOMACORRIENTES.extend([(2.45, W - 0.18, "Cinta 1 (circuito propio)"), (3.50, W - 0.18, "Cinta 2 (circuito propio)")])
+    MAQUINAS_P1 = {
+        "M02": (bx(10.511), 0.181, bx(11.351), 0.900),
+        "M03": (bx(11.519), 0.150, bx(12.788), 1.609),
+        "M12": (1.839, 4.297, 3.508, 6.495),
+        "M13": (0.305, 5.185, 1.455, 6.335),
+    }
+
+
+if VERSION == "B":
+    _version_b()
 
 
 # --------------------------------------------------------------------------- verificaciones
@@ -296,7 +353,7 @@ def obstaculos():
     return obs
 
 
-def verificar():
+def _verificar_a():
     """Devuelve lista de (descripcion, valor_m, minimo_m, ok)."""
     M = {m["id"]: rect_maquina(m) for m in MAQUINAS}
     R = RECEPCION
@@ -342,6 +399,57 @@ def verificar():
     return chk
 
 
+def _verificar_b():
+    M = {m["id"]: rect_maquina(m) for m in MAQUINAS}
+    R = RECEPCION
+    chk = []
+
+    def paso(desc, a, b, minimo):
+        d = round(_dist_rect(a, b), 2)
+        chk.append((desc, d, minimo, d >= minimo - 1e-6))
+
+    def valor(desc, v, minimo):
+        chk.append((desc, round(v, 2), minimo, v >= minimo - 1e-6))
+
+    paso("Vestíbulo: lockers - hip thrust", R["lockers"], M["M11"], 1.10)
+    paso("Hall de llegada: mostrador - hip thrust", R["mostrador"], M["M11"], 1.10)
+    paso("Eje principal: banco 1 - prensa", M["M05"], M["M10"], 1.10)
+    valor("Ancho de la llegada de escalera", X_VANO1 - X_VANO0, 0.90)
+    valor("Frente de baños libre (P-2 a zona de seguridad de cintas)", ZONA_SEGURIDAD[1] - 2.05, 1.20)
+    valor("Zona libre detrás de las cintas (seguridad)", ZONA_SEGURIDAD[3] - ZONA_SEGURIDAD[1], 1.00)
+    valor("Detrás de las cintas hasta el primer obstáculo (banca)", M["M15"][1] - R["banca"][3], 1.50)
+    paso("Bicicletas - cinta 1 (paso a las bicicletas)", M["M16"], M["M14"], 0.50)
+    paso("Entre bicicletas (acceso)", M["M16"], M["M17"], 0.50)
+    paso("Cinta 2 - hip thrust (carga de discos)", M["M15"], M["M11"], 0.45)
+    paso("Hip thrust - prensa (carga de discos)", M["M11"], M["M10"], 0.50)
+    paso("Prensa - crossover", M["M10"], M["M09"], 0.60)
+    paso("Mancuernero - bancos (pasillo de mancuernas)", M["M01"], M["M05"], 0.60)
+    paso("Bancos - press plano (pasillo)", M["M06"], M["M12"], 0.70)
+    valor("Press plano: barra a frente de tríceps", M["M12"][1] - M["M03"][3], 0.60)
+    valor("Press plano: barra a frente de crossover", M["M09"][1] - M["M12"][3], 0.80)
+    paso("Press plano - extensión (paso)", M["M12"], M["M07"], 0.70)
+    valor("Dominadas: frente libre", M["M12"][1] - M["M13"][3], 0.80)
+    paso("Bíceps - extensión (acceso)", M["M04"], M["M07"], 0.80)
+    paso("Porta barras: frente libre (a press plano)", M["M02"], M["M12"], 0.80)
+    for m in MAQUINAS:
+        if m["alto"] >= 1.7:
+            h = altura_techo(m["c"][0])
+            chk.append(("Altura libre sobre %s (%.2f m de alto)" % (m["nombre"], m["alto"]), round(h - m["alto"], 2), 0.10, h - m["alto"] >= 0.10))
+    h = altura_techo(2.45) - (0.25 + 1.85 + 0.10)
+    chk.append(("Altura libre sobre un corredor de 1.85 m en la cinta", round(h, 2), 0.30, h >= 0.30))
+    obs = obstaculos()
+    for i in range(len(obs)):
+        for j in range(i + 1, len(obs)):
+            a, b = obs[i][1], obs[j][1]
+            if a[0] < b[2] - 1e-6 and b[0] < a[2] - 1e-6 and a[1] < b[3] - 1e-6 and b[1] < a[3] - 1e-6:
+                chk.append(("CHOQUE %s / %s" % (obs[i][0], obs[j][0]), 0.0, 0.0, False))
+    return chk
+
+
+def verificar():
+    return _verificar_b() if VERSION == "B" else _verificar_a()
+
+
 def areas():
     sala_e = (L - T - (X_ESC1 + T)) * (W - 2 * T)
     sala_o = (X_ESC1 + T - T) * (W - T - Y_HALL0) - 1.08 * (3.20 - Y_HALL0) - 0.55 * (3.41 - Y_HALL0)
@@ -359,15 +467,15 @@ def cargas():
     filas = []
     for m in MAQUINAS:
         a = (m["w"] + 0.6) * (m["d"] + 0.6)
-        total = m["peso_kg"] + 85                  # + un usuario
-        filas.append((m["id"], m["nombre"], m["peso_kg"], total, round(a, 2), round(total / a)))
+        total = m["peso_kg"] + 85 * m.get("factor_usuario", 1.0)      # + un usuario (x 2.5 corriendo)
+        filas.append((m["id"], m["nombre"], m["peso_kg"], int(round(total)), round(a, 2), round(total / a)))
     return filas
 
 
 def escena():
     """Diccionario con todo lo necesario para el modelo 3D."""
     return {
-        "nombre": NOMBRE, "L": L, "W": W, "T": T, "H_PARAPETO": H_PARAPETO, "H_BANO": H_BANO,
+        "nombre": NOMBRE, "version": VERSION, "zona_seguridad": ZONA_SEGURIDAD, "L": L, "W": W, "T": T, "H_PARAPETO": H_PARAPETO, "H_BANO": H_BANO,
         "Y_BLOQUE": Y_BLOQUE, "X_BANO_D": X_BANO_D, "Y_HALL0": Y_HALL0,
         "muros": MUROS, "puertas": PUERTAS, "banos": BANOS, "tragaluces": TRAGALUCES,
         "tanque": TANQUE, "lavadero": LAVADERO, "escalera": ESCALERA, "columnas": COLUMNAS,
@@ -381,7 +489,7 @@ def escena():
 
 
 def exportar_escena(ruta=None):
-    ruta = ruta or os.path.join(AQUI, "render3d", "web", "escena.json")
+    ruta = ruta or os.path.join(AQUI, "render3d", "web", "escena%s.json" % SUFIJO)
     os.makedirs(os.path.dirname(ruta), exist_ok=True)
     with open(ruta, "w", encoding="utf-8") as f:
         json.dump(escena(), f, ensure_ascii=False, indent=1)
@@ -389,7 +497,7 @@ def exportar_escena(ruta=None):
 
 
 if __name__ == "__main__":
-    print(NOMBRE, "-", LUGAR)
+    print(NOMBRE, "- versión", VERSION, "-", LUGAR)
     print("Modelo: %.2f x %.2f m" % (L, W), "| áreas:", areas())
     mal = 0
     for desc, v, mn, ok in verificar():

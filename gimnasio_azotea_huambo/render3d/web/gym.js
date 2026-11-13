@@ -18,7 +18,8 @@ let ANCHO = +OPC.w || canvas.clientWidth || window.innerWidth;
 let ALTO = +OPC.h || canvas.clientHeight || window.innerHeight;
 let NOCHE = OPC.modo === 'noche';
 const CON_AO = OPC.ao !== '0' && OPC.ao !== false;
-const D = await (await fetch(new URL('./escena.json', import.meta.url))).json();
+const VER = String(OPC.ver || 'A').toUpperCase();
+const D = await (await fetch(new URL(`./escena${VER === 'A' ? '' : '_' + VER}.json`, import.meta.url))).json();
 const { L, W, T } = D;
 const XC = D.x_cercha, HT = D.h_techo;
 
@@ -212,6 +213,11 @@ for (const p of D.pisos) {
     const [a, b, c, d] = p.rect;
     for (const [x0, y0, x1, y1] of [[a, d - 0.05, c, d], [c - 0.05, b, c, d]]) F.add(suelo(rectPts([x0, y0, x1, y1]), 0.005, M_.rojo));
   }
+  if (p.id === 'caucho_cardio') {
+    F.add(suelo(rectPts(p.rect), 0.002, M_.cauchoPL));
+    const [a, b, c, d] = p.rect;
+    for (const [x0, y0, x1, y1] of [[a, b, c, b + 0.05], [a, b, a + 0.05, d], [c - 0.05, b, c, d]]) F.add(suelo(rectPts([x0, y0, x1, y1]), 0.005, M_.rojo));
+  }
   if (p.id === 'grass') {
     const [a, b, c, d] = p.rect;
     const g = caja(c - a, 0.014, d - b, M_.grass, (a + c) / 2, 0.007, (b + d) / 2); g.castShadow = false;
@@ -219,6 +225,11 @@ for (const p of D.pisos) {
     g.material = M_.grass.clone(); g.material.map = texGrass(); g.material.map.repeat.set((c - a) * 0.9, (d - b) * 0.9); F.add(g);
     for (const [x0, y0, x1, y1] of [[a, b, c, b + 0.06], [a, d - 0.06, c, d], [a, b, a + 0.06, d], [c - 0.06, b, c, d]]) F.add(suelo(rectPts([x0, y0, x1, y1]), 0.016, M_.blanco));
   }
+}
+if (D.zona_seguridad) {            // franja libre detrás de las cintas, marcada en el piso
+  const [a, b, c, d] = D.zona_seguridad, am = std(0xf2c200, 0.7, 0);
+  for (let x = a; x < c - 0.01; x += 0.5) F.add(suelo(rectPts([x, b, Math.min(c, x + 0.28), b + 0.05]), 0.006, am));
+  for (const x of [a, c - 0.05]) for (let y = b; y < d - 0.01; y += 0.5) F.add(suelo(rectPts([x, y, x + 0.05, Math.min(d, y + 0.28)]), 0.006, am));
 }
 // vacíos: tragaluces (pozo de luz) y caja de escalera
 function pozo(r, prof, mat) {
@@ -442,12 +453,14 @@ const espejos = [];
   g.add(caja(0.3, 0.015, 0.22, MAT.gris, a - 0.12, 0.76, (b + d) / 2), caja(0.3, 0.2, 0.012, MAT.marco, a - 0.12 + 0.0, 0.86, (b + d) / 2 - 0.11));
   g.add(caja(0.09, 0.05, 0.16, M_.negroMate, a + 0.3, hm + 0.025, d - 0.3), caja(0.2, 0.012, 0.28, M_.blanco, a + 0.26, hm + 0.006, b + 0.4));
   // taburete
-  g.add(tubo([5.55, 0, 3.0], [5.55, 0.62, 3.0], 0.025, MAT.cromo), cojin(0.36, 0.07, 0.36, MAT.tapiz, 5.55, 0.66, 3.0, 0.03), caja(0.4, 0.02, 0.4, MAT.marco, 5.55, 0.01, 3.0));
+  const yt = (b + d) / 2 + 0.15;
+  g.add(tubo([5.55, 0, yt], [5.55, 0.62, yt], 0.025, MAT.cromo), cojin(0.36, 0.07, 0.36, MAT.tapiz, 5.55, 0.66, yt, 0.03), caja(0.4, 0.02, 0.4, MAT.marco, 5.55, 0.01, yt));
   // panel de marca (hacia el ingreso) retroiluminado
   const [pa, pb, pc, pd] = R.panel_marca, hp = R.alto_panel;
   g.add(muro(pa, pb, pc, pd, 0, hp, M_.negroMate));
-  const logo = new THREE.Mesh(new THREE.PlaneGeometry(pd - pb - 0.04, hp - 0.04), new THREE.MeshStandardMaterial({ map: texLogo(), roughness: 0.55, emissive: 0xffffff, emissiveMap: texLogo(), emissiveIntensity: 0.55 }));
-  logo.rotation.y = Math.PI / 2; logo.position.set(pc + 0.004, hp / 2, (pb + pd) / 2); g.add(logo);
+  const wl = pd - pb - 0.04, hl2 = Math.min(hp - 0.04, wl * 1570 / 1024);
+  const logo = new THREE.Mesh(new THREE.PlaneGeometry(wl, hl2), new THREE.MeshStandardMaterial({ map: texLogo(), roughness: 0.55, emissive: 0xffffff, emissiveMap: texLogo(), emissiveIntensity: 0.55 }));
+  logo.rotation.y = Math.PI / 2; logo.position.set(pc + 0.004, hp - 0.02 - hl2 / 2, (pb + pd) / 2); g.add(logo);
   g.add(muro(pc, pb, pc + 0.02, pd, hp, hp + 0.02, M_.ledRojo));
   // estante de productos detrás del mostrador (contra el muro de luz)
   const [ea, eb, ec, ed] = R.estante;
@@ -483,7 +496,7 @@ const espejos = [];
 // ------------------------------------------------------------------ máquinas y accesorios
 for (const m of D.maquinas) F.add(sombra(crearMaquina(m)));
 for (const [x, y] of D.porta_discos) { const p = portaDiscos(); p.position.set(x, 0, y); p.rotation.y = 0.5; F.add(sombra(p)); }
-{ // zona funcional: cajón pliométrico, pesas rusas, colchonetas, rodillo
+if (D.zona_funcional) { // zona funcional: cajón pliométrico, pesas rusas, colchonetas, rodillo
   const g = G(), [a, b, c, d] = D.zona_funcional;
   g.add(cojin(0.6, 0.5, 0.75, M_.madera, c - 0.5, 0.265, b + 0.55, 0.01));
   for (const [i, col] of [[0, 0xd81f26], [1, 0x1f6f8b], [2, 0xe2b007]]) {
@@ -531,7 +544,8 @@ const luces = [];
   }
   // letreros colgantes por zona
   const letreros = [['RECEPCIÓN', 6.9, 3.3, Math.PI / 2], ['PESO LIBRE', (D.espejos[0][0] + D.espejos[0][1]) / 2, 1.45, 0], ['TREN INFERIOR', L - 2.1, 3.9, Math.PI / 2],
-    ['TREN SUPERIOR', D.maquinas[8].c[0], 4.75, 0], ['SS.HH. · LOCKERS', 3.0, 3.6, 0]];
+    ['TREN SUPERIOR', D.maquinas.find((m) => m.tipo === 'crossover').c[0], 4.75, 0], ['SS.HH. · LOCKERS', 3.0, VER === 'A' ? 3.6 : 3.0, 0]];
+  if (D.maquinas.some((m) => m.tipo === 'cinta')) letreros.push(['CARDIO', 2.6, 4.5, 0]);
   for (const [txt, x, z, giro] of letreros) {
     const y = hTecho(x) - 0.28, t = texLetrero(txt);
     const s = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.2, 0.016), [M_.negroMate, M_.negroMate, M_.negroMate, M_.negroMate, new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 }), new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 })]);
@@ -550,9 +564,11 @@ const luces = [];
   const pon = (p, x, z, giro) => { p.position.set(x, 0, z); p.rotation.y = giro; g.add(sombra(p)); return p; };
   pon(persona({ polo: 3, brazoI: [0.25, 0.9, 0.1, 1.3], brazoD: [0.2, 0.2, 0.1, 0.5] }), 5.62, 3.05, Math.PI / 2);                       // recepcionista
   pon(persona({ polo: 2, alto: 1.64, brazoI: [0.15, 0.3, 0.1, 1.2], brazoD: [0.1, 0, 0.1, 0.1] }), 6.98, 2.95, -Math.PI / 2);            // socia en el mostrador
-  pon(persona({ polo: 1, alto: 1.76, brazoI: [1.25, 0.25, 1.1, 0.5], brazoD: [1.25, 0.25, 1.1, 0.5], paso: 0.16 }), D.maquinas[8].c[0], 5.0, Math.PI);   // crossover
-  pon(persona({ polo: 4, alto: 1.62, brazoI: [2.9, 0.05, 2.9, 0.1], brazoD: [2.9, 0.05, 2.9, 0.1] }), D.zona_funcional[0] + 1.3, D.zona_funcional[3] - 1.0, -0.5);  // estiramiento
-  pon(persona({ polo: 5, alto: 1.72, brazoI: [0.1, -0.35, 0.1, 0.2], brazoD: [0.1, 0.4, 0.1, 0.7], paso: 0.24 }), 4.2, 4.0, 1.1);        // caminando al vestuario
+  pon(persona({ polo: 1, alto: 1.76, brazoI: [1.25, 0.25, 1.1, 0.5], brazoD: [1.25, 0.25, 1.1, 0.5], paso: 0.16 }), D.maquinas.find((m) => m.tipo === 'crossover').c[0], 5.0, Math.PI);   // crossover
+  if (D.zona_funcional) pon(persona({ polo: 4, alto: 1.62, brazoI: [2.9, 0.05, 2.9, 0.1], brazoD: [2.9, 0.05, 2.9, 0.1] }), D.zona_funcional[0] + 1.3, D.zona_funcional[3] - 1.0, -0.5);  // estiramiento
+  const ct = D.maquinas.find((m) => m.tipo === 'cinta');
+  if (ct) { const r = pon(persona({ polo: 4, alto: 1.68, brazoI: [0.2, 0.7, 0.2, 1.7], brazoD: [0.2, -0.5, 0.2, 1.2], paso: 0.3 }), ct.c[0], ct.c[1] + 0.25, 0); r.position.y = 0.23; }   // corriendo
+  pon(persona({ polo: 5, alto: 1.72, brazoI: [0.1, -0.35, 0.1, 0.2], brazoD: [0.1, 0.4, 0.1, 0.7], paso: 0.24 }), 4.2, VER === 'A' ? 4.0 : 3.75, 1.1);        // caminando al vestuario
   if (OPC.gente === '0' || OPC.gente === false) g.visible = false;
 }
 

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Regenera todos los entregables del proyecto AZOTEA GYM:  python3 generar.py
+Versión B (con zona de cardio):  GYM_VERSION=B python3 generar.py   -> carpeta salida_B/
 (las vistas 3D, el video y el PDF de la presentación se generan con Node; ver README)."""
 import diseno
 import laminas
@@ -8,6 +9,7 @@ import exportar_dxf
 import memoria
 
 if __name__ == "__main__":
+    print("AZOTEA GYM - versión", diseno.VERSION, "->", diseno.SALIDA)
     mal = [c for c in diseno.verificar() if not c[3]]
     print("Verificaciones: %d conformes, %d con observación" % (len(diseno.verificar()) - len(mal), len(mal)))
     for c in mal:

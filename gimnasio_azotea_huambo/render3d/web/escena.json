@@ -1,5 +1,7 @@
 {
  "nombre": "AZOTEA GYM",
+ "version": "A",
+ "zona_seguridad": null,
  "L": 14.97,
  "W": 6.65,
  "T": 0.15,

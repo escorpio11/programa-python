@@ -10,7 +10,8 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const TIPOS = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.html': 'text/html', '.css': 'text/css', '.png': 'image/png' };
-const salida = process.argv[2] || path.join(AQUI, '..', 'salida', 'vistas_3d');
+const VER = (process.env.GYM_VERSION || 'A').toUpperCase();
+const salida = process.argv[2] || path.join(AQUI, '..', VER === 'A' ? 'salida' : 'salida_' + VER, 'vistas_3d');
 const ancho = +(process.argv[3] || 1920), alto = +(process.argv[4] || 1080);
 const solo = (process.argv[5] || '').split(',').filter(Boolean);
 fs.mkdirSync(salida, { recursive: true });
@@ -42,12 +43,21 @@ export const VISTAS = [
   { nombre: '13_vista_general_alta', cam: [14.55, 2.18, 4.08], obj: [5.5, 0.35, 3.1], fov: 76, techo: true },
   { nombre: '14_noche_desde_la_calle', cam: [14.35, 1.7, 1.75], obj: [7.5, 0.95, 4.2], fov: 68, techo: true, noche: true },
 ];
+if (VER === 'B') {            // cámaras propias de la versión B (cardio en la esquina del lado mercado)
+  const cambia = {
+    '03_peso_libre_y_espejos': { cam: [12.55, 1.65, 4.85], obj: [9.3, 0.85, 0.9], fov: 64 },
+    '08_zona_oeste': { nombre: '08_zona_cardio', cam: [5.75, 1.7, 4.15], obj: [1.5, 0.85, 5.35], fov: 68 },
+  };
+  for (const v of VISTAS) Object.assign(v, cambia[v.nombre] || {});
+  VISTAS.push({ nombre: '15_cardio_y_ventanal', cam: [3.0, 1.68, 3.2], obj: [2.75, 0.95, 6.2], fov: 70, techo: true },
+    { nombre: '16_noche_cardio', cam: [5.75, 1.7, 4.15], obj: [1.5, 0.85, 5.35], fov: 68, techo: true, noche: true });
+}
 const page = await browser.newPage({ viewport: { width: ancho, height: alto }, deviceScaleFactor: 1 });
 const errores = [];
 page.on('pageerror', (e) => errores.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errores.push(m.text()); });
 const t0 = Date.now();
-await page.goto(`http://localhost:${PUERTO}/web/index.html?w=${ancho}&h=${alto}${process.env.GYM_Q || ''}`, { waitUntil: 'commit' });
+await page.goto(`http://localhost:${PUERTO}/web/index.html?w=${ancho}&h=${alto}&ver=${VER}${process.env.GYM_Q || ''}`, { waitUntil: 'commit' });
 try {
   await page.waitForFunction('window.APP && window.APP.listo === true', null, { timeout: 300000, polling: 500 });
 } catch (e) { console.error('no cargó:\n' + errores.join('\n')); await browser.close(); srv.close(); process.exit(1); }

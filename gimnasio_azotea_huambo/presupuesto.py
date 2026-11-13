@@ -9,7 +9,8 @@ import diseno as D
 from laminas import metrados
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
-SALIDA = os.path.join(AQUI, "salida")
+SALIDA = D.SALIDA
+B = D.VERSION == "B"
 IMPREVISTOS = 0.08
 
 
@@ -22,20 +23,20 @@ def partidas():
         ("MÁQUINAS (precios de catálogo)", False, maq),
         ("ACCESORIOS DE PESO LIBRE", False, acc),
         ("TRANSPORTE, IZAJE Y ARMADO", False, [
-            ("Flete Lima – Huambo (camión, ≈ 3.5 t de equipos)", "glb", 1, 4500, 1, "Estimado: cotizar con el proveedor"),
+            ("Flete Lima – Huambo (camión, ≈ %s t de equipos)" % ("4.2" if B else "3.5"), "glb", 1, 5300 if B else 4500, 1, "Estimado: cotizar con el proveedor"),
             ("Izaje de equipos a la azotea (polea o andamio desde la calle)", "glb", 1, 900, 1, "La escalera mide 0.97 m: equipos grandes suben por fuera"),
-            ("Armado, nivelación y prueba de máquinas", "glb", 1, 1000, 1, "Gratis solo en Lima según catálogo"),
+            ("Armado, nivelación y prueba de máquinas", "glb", 1, 1200 if B else 1000, 1, "Gratis solo en Lima según catálogo"),
         ]),
         ("PISOS", True, [
             ("Limpieza y nivelación puntual de losa", "m²", ar["sala"], 8, 1, ""),
             ("Caucho reciclado 15 mm, losetas 1 x 1 m (sala de máquinas)", "m²", me["caucho15"], 95, 1, "Instalado"),
             ("Caucho reciclado 25 mm (peso libre)", "m²", me["caucho_pl"], 145, 1, "Instalado"),
             ("Piso vinílico SPC tono madera (recepción y vestíbulo)", "m²", me["vinilico"], 75, 1, "Instalado"),
-            ("Grass sintético deportivo 12 mm (zona funcional)", "m²", me["grass"], 55, 2, "Instalado"),
-        ]),
+        ] + ([("Caucho reciclado 25 mm bajo cintas de correr (base antivibratoria)", "m²", me["caucho_cardio"], 145, 1, "Instalado")] if me["caucho_cardio"] else [])
+          + ([("Grass sintético deportivo 12 mm (zona funcional)", "m²", me["grass"], 55, 2, "Instalado")] if me["grass"] else [])),
         ("RECEPCIÓN Y MOBILIARIO", True, [
-            ("Mostrador 1.50 x 0.50 x 1.05 m, melamina y frente de listones", "und", 1, 1800, 1, "Carpintería local"),
-            ("Panel de marca 1.50 x 2.30 m con logo retroiluminado", "und", 1, 1600, 1, "Bastidor metálico + MDF + vinil + LED"),
+            ("Mostrador %.2f x 0.50 x 1.05 m, melamina y frente de listones" % (D.RECEPCION["mostrador"][3] - D.RECEPCION["mostrador"][1]), "und", 1, 1600 if B else 1800, 1, "Carpintería local"),
+            ("Panel de marca %.2f x 2.30 m con logo retroiluminado" % (D.RECEPCION["panel_marca"][3] - D.RECEPCION["panel_marca"][1]), "und", 1, 1450 if B else 1600, 1, "Bastidor metálico + MDF + vinil + LED"),
             ("Lockers metálicos de 12 casilleros (0.30 x 0.60 x 0.42 m)", "jgo", 1, 1900, 1, ""),
             ("Estante de productos 0.83 x 0.28 x 1.90 m", "und", 1, 450, 1, ""),
             ("Banca de listones 0.80 x 0.38 m", "und", 1, 350, 1, ""),
@@ -45,7 +46,7 @@ def partidas():
         ]),
         ("CERRAMIENTO Y CARPINTERÍA METÁLICA", True, [
             ("Policarbonato alveolar 8 mm con estructura de tubo 50 x 50", "m²", c.get("policarbonato", 0), 165, 1, "Lado B, mercado y fondo. Descontar si ya existe"),
-            ("Ventanal transparente lado calle (policarbonato compacto 4 mm)", "m²", c.get("ventanal", 0), 290, 1, "Con vidrio templado 6 mm: ≈ S/ 420/m²"),
+            ("Ventanal transparente %s (policarbonato compacto 4 mm)" % ("lado calle y esquina de cardio" if B else "lado calle"), "m²", c.get("ventanal", 0), 290, 1, "Con vidrio templado 6 mm: ≈ S/ 420/m²"),
             ("Panel de fibrocemento 8 mm con estructura (pared de espejos)", "m²", c.get("panel_espejo", 0), 140, 1, ""),
             ("Lamas metálicas de ventilación (franja superior)", "m²", c.get("lamas", 0), 150, 1, ""),
             ("Muro de luz: policarbonato opal 8 mm sobre muro del tragaluz E", "m²", c.get("muro_luz", 0), 175, 1, "De +1.00 a +2.40"),
@@ -61,6 +62,8 @@ def partidas():
         ("INSTALACIONES ELÉCTRICAS, VENTILACIÓN Y SONIDO", True, [
             ("Luminaria LED lineal 40 W, 4000 K, con suspensión", "und", len(D.LUMINARIAS), 75, 1, ""),
             ("Tablero, cableado, tubería y mano de obra (5 circuitos)", "glb", 1, 2400, 1, "Con interruptor diferencial 30 mA"),
+        ] + ([("Circuito independiente para cinta de correr (4 mm², ITM 20 A, toma dedicada)", "und", 2, 450, 1, "Uno por cinta"),
+              ("Refuerzo del alimentador y del tablero general (10 mm²)", "glb", 1, 700, 1, "Confirmar potencia contratada con la concesionaria")] if B else []) + [
             ("Tomacorriente doble con línea a tierra", "und", len(D.TOMACORRIENTES), 85, 1, ""),
             ("Luz de emergencia LED", "und", len(D.LUCES_EMERGENCIA), 95, 1, ""),
             ("Tiras LED de acento con fuentes (≈ 30 m)", "glb", 1, 600, 2, ""),
@@ -78,12 +81,15 @@ def partidas():
             ("Mural y rotulación de marca (vinil)", "glb", 1, 700, 2, ""),
             ("Plantas y decoración", "glb", 1, 250, 2, ""),
         ]),
-        ("ZONA FUNCIONAL (implementos)", True, [
+        (("ESTIRAMIENTO (implementos)", True, [
+            ("Colchonetas 1.75 x 0.60 m con soporte de pared", "und", 4, 75, 2, "Se usan frente al crossover fuera de la hora punta"),
+            ("Rodillo y bandas elásticas", "jgo", 1, 180, 2, ""),
+        ]) if B else ("ZONA FUNCIONAL (implementos)", True, [
             ("Colchonetas 1.75 x 0.60 m", "und", 4, 60, 2, ""),
             ("Juego de 3 pesas rusas (8, 12 y 16 kg)", "jgo", 1, 350, 2, ""),
             ("Cajón pliométrico de madera", "und", 1, 280, 2, ""),
             ("Pelota, rodillo y bandas elásticas", "jgo", 1, 260, 2, ""),
-        ]),
+        ])),
         ("ESTUDIOS Y PERMISOS", False, [
             ("Evaluación estructural de losa y vigas (ingeniero civil colegiado)", "glb", 1, 1500, 1, "Obligatoria antes de comprar"),
             ("ITSE y licencia de funcionamiento municipal", "glb", 1, 600, 1, "Estimado: confirmar en la municipalidad"),
@@ -94,8 +100,8 @@ def partidas():
 SUPUESTOS_NEGOCIO = {
     "mensualidad": 70, "extra_por_socio": 6,
     "escenarios": [("Conservador", 45), ("Base", 80), ("Optimista", 110)],
-    "costos": [("Personal (recepción / instructor)", 1300), ("Electricidad", 280), ("Agua", 90), ("Limpieza e insumos", 150),
-               ("Mantenimiento de equipos", 200), ("Internet y sistema de control", 90), ("Publicidad local", 120), ("Varios", 150)],
+    "costos": [("Personal (recepción / instructor)", 1300), ("Electricidad", 400 if B else 280), ("Agua", 90), ("Limpieza e insumos", 150),
+               ("Mantenimiento de equipos", 260 if B else 200), ("Internet y sistema de control", 90), ("Publicidad local", 120), ("Varios", 150)],
 }
 
 
@@ -139,7 +145,7 @@ def generar():
 
     # ---------------- Presupuesto
     ws = wb.active; ws.title = "Presupuesto"
-    ws["A1"] = "AZOTEA GYM — Presupuesto referencial (precios con IGV, noviembre 2026)"; ws["A1"].font = f_tit
+    ws["A1"] = "AZOTEA GYM%s — Presupuesto referencial (precios con IGV, noviembre 2026)" % (" · VERSIÓN B (con cardio)" if B else ""); ws["A1"].font = f_tit
     ws["A2"] = "Huambo, Rodríguez de Mendoza, Amazonas. Máquinas con precios del Catálogo 2026 Fitness Extreme; el resto son precios referenciales a cotizar."; ws["A2"].font = Font(name="Arial", italic=True, size=9)
     cab = ["Ítem", "Descripción", "Und.", "Metrado", "P. unitario", "Parcial", "Etapa", "Referencia / nota"]
     for i, c in enumerate(cab, 1):
@@ -253,7 +259,7 @@ def generar():
         cr.column_dimensions[get_column_letter(1 + s)].width = 10
     cr.cell(row=5 + len(CRONOGRAMA), column=1, value="La fabricación de las máquinas marca la ruta crítica: confirmar el plazo con el proveedor al hacer el pedido.").font = Font(name="Arial", italic=True, size=9)
 
-    ruta = os.path.join(SALIDA, "Presupuesto_Azotea_Gym.xlsx")
+    ruta = os.path.join(SALIDA, "Presupuesto_Azotea_Gym%s.xlsx" % D.SUFIJO)
     wb.save(ruta)
     return ruta
 

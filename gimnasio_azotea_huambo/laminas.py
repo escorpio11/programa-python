@@ -13,7 +13,8 @@ from matplotlib import font_manager
 import diseno as D
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
-SALIDA = os.path.join(AQUI, "salida")
+SALIDA = D.SALIDA
+B = D.VERSION == "B"
 FECHA = "Noviembre 2026"
 if any("Inter" == f.name for f in font_manager.fontManager.ttflist):
     plt.rcParams["font.family"] = ["Inter", "DejaVu Sans"]
@@ -43,7 +44,7 @@ def nueva(codigo, titulo, escala, notas=()):
         marco.text(x0 + 3, y - 4.2, txt, fontsize=tam, color=TINTA, va="top", fontweight="bold" if negrita else "normal", linespacing=1.25)
         y -= alto
 
-    campo("PROYECTO", "Gimnasio en azotea\n«Azotea Gym»", 18)
+    campo("PROYECTO", "Gimnasio en azotea «Azotea Gym»\nVERSIÓN B · con zona de cardio" if B else "Gimnasio en azotea\n«Azotea Gym»", 18, 7.6 if B else 8.5)
     campo("UBICACIÓN", "Jr. San Miguel, Huambo\nRodríguez de Mendoza, Amazonas", 18, 7.2)
     campo("LÁMINA", titulo, 24, 8.6, True)
     campo("ESCALA", escala, 12)
@@ -188,6 +189,12 @@ def dibujar_recepcion(ax, textos=True):
             rect(ax, p["rect"], fc="#cfe8c6", ec="#3f8f3a", lw=0.6, zorder=0.7)
         if p["id"] == "caucho_pl":
             r = p["rect"]; ax.plot([r[0], r[2], r[2]], [r[3], r[3], r[1]], color=ROJO, lw=0.6, ls="--", zorder=0.8)
+        if p["id"] == "caucho_cardio":
+            r = p["rect"]; ax.plot([r[0], r[0], r[2], r[2]], [r[3], r[1], r[1], r[3]], color=ROJO, lw=0.6, ls="--", zorder=0.8)
+    if D.ZONA_SEGURIDAD:
+        rect(ax, D.ZONA_SEGURIDAD, fc="#fff3c4", ec="#d99a00", lw=0.6, ls="--", hatch="///", alpha=0.75, zorder=0.9)
+        if textos:
+            zs = D.ZONA_SEGURIDAD; ax.text((zs[0] + zs[2]) / 2, (zs[1] + zs[3]) / 2, "ZONA LIBRE DE SEGURIDAD\n1.00 m detrás de las cintas", fontsize=3.7, color="#8a5d00", ha="center", va="center", zorder=9)
     rect(ax, R["mostrador"], fc="#c9925a", ec=TINTA, lw=0.7, zorder=6)
     rect(ax, R["panel_marca"], fc=ROJO, ec=TINTA, lw=0.5, zorder=6)
     la = R["lockers"]; rect(ax, la, fc="#d7d9dd", ec=TINTA, lw=0.6, zorder=6)
@@ -195,20 +202,22 @@ def dibujar_recepcion(ax, textos=True):
         y = la[1] + i * (la[3] - la[1]) / 4; ax.plot([la[0], la[2]], [y, y], color=TINTA, lw=0.35, zorder=7)
     rect(ax, R["banca"], fc="#e3c9a1", ec=TINTA, lw=0.5, zorder=6)
     rect(ax, R["estante"], fc="#e9e9e6", ec=TINTA, lw=0.4, zorder=6)
-    ax.add_patch(Circle((5.55, 3.0), 0.17, fc="white", ec=TINTA, lw=0.5, zorder=6))
+    mo = R["mostrador"]
+    ax.add_patch(Circle((5.55, (mo[1] + mo[3]) / 2 + 0.15), 0.17, fc="white", ec=TINTA, lw=0.5, zorder=6))
     for x0, y0, x1, y1, h in D.CELOSIAS:
         ax.plot([x0, x1], [y0, y1], color="#a8763e", lw=1.6, zorder=6)
     for a, b in D.ESPEJOS:
         ax.plot([a, b], [D.T + 0.03, D.T + 0.03], color="#39a0c8", lw=1.5, zorder=6)
     if textos:
         kw = dict(fontsize=4.2, color=TINTA, ha="center", va="center", zorder=9)
-        ax.text(6.25, 2.97, "MOSTRADOR", rotation=90, **dict(kw, fontsize=3.9))
+        ax.text(6.25, (mo[1] + mo[3]) / 2, "MOSTRADOR", rotation=90, **dict(kw, fontsize=3.9))
         ax.text(4.81, 2.82, "LOCKERS (12)", rotation=90, **dict(kw, fontsize=3.8))
-        ax.text(5.56, 3.4, "RECEPCIÓN", **dict(kw, fontsize=4.4, fontweight="bold"))
+        ax.text(5.56, mo[3] - 0.3, "RECEPCIÓN", **dict(kw, fontsize=4.4, fontweight="bold"))
         ax.text(3.65, 2.41, "banca", **dict(kw, fontsize=3.6))
-        zf = D.ZONA_FUNCIONAL; ax.text((zf[0] + zf[2]) / 2, (zf[1] + zf[3]) / 2, "ZONA FUNCIONAL\nY ESTIRAMIENTO\ngrass sintético", **dict(kw, fontsize=4.6, color="#2f6d2c"))
+        if D.ZONA_FUNCIONAL:
+            zf = D.ZONA_FUNCIONAL; ax.text((zf[0] + zf[2]) / 2, (zf[1] + zf[3]) / 2, "ZONA FUNCIONAL\nY ESTIRAMIENTO\ngrass sintético", **dict(kw, fontsize=4.6, color="#2f6d2c"))
         ax.text(sum(D.ESPEJOS[0]) / 2, 0.02, "ESPEJOS 4.00 x 1.80 m", **dict(kw, fontsize=3.8, color="#1f7fa8", va="bottom"))
-        ax.text(2.9, 3.05, "VESTÍBULO\nDE SERVICIOS", **dict(kw, fontsize=4.2))
+        ax.text(2.9, 2.82 if B else 3.05, "VESTÍBULO\nDE SERVICIOS", **dict(kw, fontsize=4.2))
 
 
 def tabla(marco, x, y, cols, filas, anchos, alto=4.4, tam=5.4, titulo=None):
@@ -238,14 +247,15 @@ XL, YL = (-0.95, D.L + 0.72), (-1.45, D.W + 1.15)      # ventana de la planta ge
 def A01():
     fig, mk = nueva("A-01", "Planta de distribución\npropuesta", "1 / 50",
                     ["Triángulo negro = lado de uso de cada máquina.", "Máquinas pesadas alineadas con las vigas de los ejes, como en el plano de distribución base.",
-                     "Medidas generales según plano base; baños según medidas de obra. Verificar en sitio (lámina V-01)."])
+                     "Medidas generales según plano base; baños según medidas de obra. Verificar en sitio (lámina V-01)."]
+                    + (["Versión B: 2 cintas y 2 bicicletas en la esquina del lado mercado; se conservan las 13 máquinas y se elimina la zona funcional."] if B else []))
     ax = eje(fig, 12, 14, XL, YL, 50)
     planta_base(ax); dibujar_recepcion(ax); dibujar_maquinas(ax)
     cota(ax, (0, D.W), (D.L, D.W), 0.75, "%.2f  (plano base 14.62 + 0.35 por medida de obra del baño)" % D.L)
     cota(ax, (D.L, 0), (D.L, D.W), -0.38, "%.2f" % D.W)
     ar = D.areas()
     filas = [(int(m["id"][1:]), m["nombre"], m["dim_cat"], D.ZONAS[m["zona"]]["nombre"], m["precio"]) for m in D.MAQUINAS]
-    yf = tabla(mk, 14, 94, ["N.º", "Equipo (Catálogo Fitness Extreme 2026)", "Alto x ancho x largo", "Zona", "Precio S/"], filas, [9, 62, 50, 36, 20], alto=4.6, titulo="RELACIÓN DE MÁQUINAS")
+    yf = tabla(mk, 14, 94, ["N.º", "Equipo (Catálogo Fitness Extreme 2026)", "Alto x ancho x largo", "Zona", "Precio S/"], filas, [9, 62, 50, 36, 20], alto=4.0 if B else 4.6, tam=5.1 if B else 5.4, titulo="RELACIÓN DE MÁQUINAS")
     mk.text(14 + 177 - 1.2, yf - 3, "Total máquinas  S/ {:,}".format(sum(m["precio"] for m in D.MAQUINAS)), fontsize=6.6, fontweight="bold", ha="right", va="center")
     x2 = 204
     mk.text(x2, 96.2, "ZONAS", fontsize=6.6, fontweight="bold", va="bottom")
@@ -277,9 +287,14 @@ def A02():
     vx = (D.X_VANO0 + D.X_VANO1) / 2
     rutas = [[(vx, 2.35), (vx, 3.62), (9.95, 3.62), (10.02, 4.8), (12.85, 4.8), (12.85, 1.95)],
              [(vx, 3.62), (6.75, 4.45), (5.0, 4.45), (4.2, 3.95), (3.0, 3.55), (2.45, 2.55)], [(3.0, 3.55), (2.3, 3.62), (2.3, 4.25)], [(10.0, 3.62), (10.1, 1.6), (11.6, 1.75)]]
+    flechas = [((12.85, 2.6), (12.85, 4.0)), ((11.8, 4.8), (10.6, 4.8)), ((9.0, 3.62), (7.8, 3.62)), ((3.4, 3.7), (4.4, 4.1)), ((5.4, 4.45), (6.4, 4.45)), ((vx, 3.3), (vx, 2.5))]
+    if B:
+        rutas = [[(vx, 2.35), (vx, 3.62), (9.95, 3.62), (10.15, 4.92), (12.55, 4.95), (12.58, 1.95)],
+                 [(vx, 3.62), (6.75, 3.97), (5.0, 3.97), (4.3, 3.6), (3.0, 2.92), (2.45, 2.5)], [(3.0, 2.92), (1.76, 3.7), (1.73, 4.65)], [(10.0, 3.62), (10.12, 1.9), (11.9, 1.95)]]
+        flechas = [((12.58, 2.6), (12.58, 4.2)), ((11.8, 4.94), (10.7, 4.92)), ((9.0, 3.62), (7.8, 3.62)), ((3.3, 3.08), (4.2, 3.55)), ((5.3, 3.97), (6.3, 3.96)), ((vx, 3.3), (vx, 2.5))]
     for i, r in enumerate(rutas):
         ax.plot([p[0] for p in r], [p[1] for p in r], color="#2a9a4b", lw=2.2 if i == 0 else 1.5, alpha=0.75, solid_capstyle="round", zorder=5.5, ls="-" if i < 2 else (0, (3, 2)))
-    for (a, b) in [((12.85, 2.6), (12.85, 4.0)), ((11.8, 4.8), (10.6, 4.8)), ((9.0, 3.62), (7.8, 3.62)), ((3.4, 3.7), (4.4, 4.1)), ((5.4, 4.45), (6.4, 4.45)), ((vx, 3.3), (vx, 2.5))]:
+    for (a, b) in flechas:
         ax.annotate("", xy=b, xytext=a, arrowprops=dict(arrowstyle="-|>", color="#1c7a38", lw=1.0), zorder=9)
     ax.text(vx + 0.04, 1.86, "SALIDA", fontsize=5.4, color="white", ha="center", va="center", fontweight="bold", zorder=10, bbox=dict(boxstyle="round,pad=0.25", fc="#2a9a4b", ec="none"))
     for x, y in D.EXTINTORES:
@@ -296,16 +311,27 @@ def A02():
 
     def paso(p, q, sep=0.0, col=ROJO):
         cota(ax, p, q, sep, None, 5.2, col)
-    paso((M["M11"][2] - 0.25, R["lockers"][3]), (M["M11"][2] - 0.25, M["M11"][1]), 0.0)
-    paso((6.25, R["mostrador"][3]), (6.25, M["M13"][1]), 0.0)
-    paso((8.45, M["M05"][3]), (8.45, M["M10"][1]), 0.0)
-    paso((M["M12"][2], 5.3), (M["M11"][0], 5.3), 0.0); paso((M["M11"][2], 5.9), (M["M13"][0], 5.9), 0.0); paso((M["M13"][2], 5.9), (M["M10"][0], 5.9), 0.0)
-    paso((M["M10"][2], 5.75), (M["M09"][0], 5.75), 0.0); paso((9.0, M["M01"][3]), (9.0, M["M05"][1]), 0.0)
-    paso((13.9, M["M04"][3]), (13.9, M["M07"][1]), 0.0); paso((13.9, M["M07"][3]), (13.9, M["M08"][1]), 0.0)
-    paso((2.9, 2.05), (2.9, M["M11"][1]), 0.0); paso((D.X_VANO0, 2.42), (D.X_VANO1, 2.42), 0.0)
-    paso((11.2, D.ZONA_FUNCIONAL[3]), (11.2, M["M09"][1]), 0.0)
+    if B:
+        zs = D.ZONA_SEGURIDAD
+        for p, q in [((4.8, R["lockers"][3]), (4.8, M["M11"][1])), ((6.25, R["mostrador"][3]), (6.25, M["M11"][1])), ((8.45, M["M05"][3]), (8.45, M["M10"][1])),
+                     ((M["M15"][2], 5.9), (M["M11"][0], 5.9)), ((M["M11"][2], 5.9), (M["M10"][0], 5.9)), ((M["M10"][2], 5.75), (M["M09"][0], 5.75)),
+                     ((9.0, M["M01"][3]), (9.0, M["M05"][1])), ((13.9, M["M04"][3]), (13.9, M["M07"][1])), ((2.6, 2.05), (2.6, zs[1])), ((3.55, zs[1]), (3.55, zs[3])),
+                     ((D.X_VANO0, 2.42), (D.X_VANO1, 2.42)), ((M["M06"][2], 2.7), (M["M12"][0], 2.7)), ((11.77, M["M03"][3]), (11.77, M["M12"][1])),
+                     ((11.77, M["M12"][3]), (11.77, M["M09"][1])), ((M["M12"][2], 3.0), (M["M07"][0], 3.0)), ((M["M16"][2], 4.62), (M["M14"][0], 4.62))]:
+            paso(p, q, 0.0)
+    else:
+        paso((M["M11"][2] - 0.25, R["lockers"][3]), (M["M11"][2] - 0.25, M["M11"][1]), 0.0)
+        paso((6.25, R["mostrador"][3]), (6.25, M["M13"][1]), 0.0)
+        paso((8.45, M["M05"][3]), (8.45, M["M10"][1]), 0.0)
+        paso((M["M12"][2], 5.3), (M["M11"][0], 5.3), 0.0); paso((M["M11"][2], 5.9), (M["M13"][0], 5.9), 0.0); paso((M["M13"][2], 5.9), (M["M10"][0], 5.9), 0.0)
+        paso((M["M10"][2], 5.75), (M["M09"][0], 5.75), 0.0); paso((9.0, M["M01"][3]), (9.0, M["M05"][1]), 0.0)
+        paso((13.9, M["M04"][3]), (13.9, M["M07"][1]), 0.0); paso((13.9, M["M07"][3]), (13.9, M["M08"][1]), 0.0)
+        paso((2.9, 2.05), (2.9, M["M11"][1]), 0.0); paso((D.X_VANO0, 2.42), (D.X_VANO1, 2.42), 0.0)
+        paso((11.2, D.ZONA_FUNCIONAL[3]), (11.2, M["M09"][1]), 0.0)
     filas = [(d, v, mn, "Conforme" if ok else "REVISAR") for d, v, mn, ok in D.verificar()]
-    tabla(mk, 14, 94, ["Verificación", "Valor (m)", "Mínimo (m)", "Estado"], filas[:20], [92, 18, 20, 20], alto=3.95, tam=4.9, titulo="PASOS LIBRES Y ALTURAS (calculados por diseno.py)")
+    if B:
+        filas = [f for f in filas if not any(k in f[0] for k in ("bíceps dual", "Extensión dual", "Aductor dual"))]
+    tabla(mk, 14, 94, ["Verificación", "Valor (m)", "Mínimo (m)", "Estado"], filas[:24], [92, 18, 20, 20], alto=3.45 if B else 3.95, tam=4.6 if B else 4.9, titulo="PASOS LIBRES Y ALTURAS (calculados por diseno.py)")
     x2 = 176
     mk.text(x2, 96.2, "LEYENDA", fontsize=6.6, fontweight="bold", va="bottom")
     ley = [("#2a9a4b", "Circulación principal y ruta de evacuación"), (ROJO, "Paso libre mínimo (m)"), (ROJO, "E  Extintor PQS 6 kg"), ("#f2c200", "Luz de emergencia"), (TINTA, "Cota general (m)")]
@@ -315,6 +341,10 @@ def A02():
     crit = ["La llegada de la escalera queda libre 1.50 m al frente: allí se registra el ingreso.", "Frente de los baños P-1 / P-2 libre 2.47 m: no hay máquinas frente a las puertas.",
             "El lavadero conserva su acceso por el vestíbulo de servicios.", "Los tragaluces E y SO no se cubren ni se usan como depósito.",
             "Equipos de más de 2.20 m (crossover, dominadas) bajo techo ≥ 2.48 m.", "Barras olímpicas con 0.45–0.60 m libres en cada extremo para cargar discos."]
+    if B:
+        crit = ["Frente a la escalera quedan 2.30 m libres; el hall entre mostrador y hip thrust mide 1.10 m.", "Detrás de las cintas: 1.00 m de zona de seguridad marcada en el piso y luego 1.20 m de paso a los baños.",
+                "Cintas donde el techo es más alto (2.73 m): un corredor de 1.85 m tiene 0.53 m libres.", "El lavadero conserva su acceso; los tragaluces E y SO no se cubren.",
+                "Dominadas (2.23 m) bajo techo de 2.43 m; crossover (2.30 m) bajo techo de 2.48 m.", "Barras olímpicas con 0.45–0.90 m libres en cada extremo para cargar discos."]
     for i, t in enumerate(crit):
         mk.text(x2, 47 - i * 6.0, "• " + t, fontsize=5.6, va="center")
     return fig
@@ -322,19 +352,25 @@ def A02():
 
 def A03():
     fig, mk = nueva("A-03", "Comparativo: plano base\nvs. propuesta", "1 / 75",
+                    ["Se conservan las 13 máquinas del plano base y se suman 2 cintas y 2 bicicletas.", "Prensa, crossover, extensión, aductor, mancuernero y bancos no se mueven."] if B else
                     ["Sala este: se conserva la ubicación del plano de distribución.", "Sala oeste: 3 equipos reubicados por los baños construidos y la recepción."])
     xl, yl = (-1.0, D.L + 1.0), (-1.35, D.W + 0.6)
-    for k, (yy, tit) in enumerate([(16, "PLANO BASE (agosto 2026) sobre la obra actual: conflictos"), (142, "PROPUESTA: sala oeste reorganizada")]):
+    for k, (yy, tit) in enumerate([(16, "PLANO BASE (agosto 2026) sobre la obra actual"), (142, "VERSIÓN B: cardio en la esquina del lado mercado y peso libre reunido" if B else "PROPUESTA: sala oeste reorganizada")]):
         ax = eje(fig, 16, yy + 8, xl, yl, 75)
         mk.text(16, A3[1] - yy - 3, tit, fontsize=8.5, fontweight="bold", va="center")
         planta_base(ax, textos=False)
         if k == 0:
             for m in D.MAQUINAS:
+                if m["zona"] == "cardio":
+                    continue
                 r = D.MAQUINAS_P1.get(m["id"], D.rect_maquina(m)); mov = m["id"] in D.MAQUINAS_P1
                 rect(ax, r, fc="#f7c9c9" if mov else "#e8e8e6", ec=ROJO if mov else GRIS, lw=0.8 if mov else 0.5, zorder=6)
                 ax.text((r[0] + r[2]) / 2, (r[1] + r[3]) / 2, str(int(m["id"][1:])), fontsize=5.6, ha="center", va="center", zorder=8, fontweight="bold")
             notas = [((5.6, 3.9), "Sin recepción: el ingreso\nda directo a las máquinas"), ((2.65, 6.25), "Barra del press contra el\nmuro: no se pueden cargar discos"),
                      ((5.45, 4.25), "Hip thrust frente a la llegada:\npaso de 0.90 m hacia los baños"), ((2.5, 2.6), "Baños construidos: puertas P-1 y\nP-2 abren a este vestíbulo")]
+            if B:
+                notas = [((5.6, 3.4), "Sin recepción y sin\nmáquinas de cardio"), ((2.65, 6.25), "Barra del press contra el\nmuro: no se pueden cargar discos"),
+                         ((2.5, 2.6), "Baños construidos: puertas P-1 y\nP-2 abren a este vestíbulo"), ((12.2, 2.9), "Centro de la sala libre")]
             for (x, y), t in notas:
                 ax.text(x, y, t, fontsize=4.6, color=ROJO, ha="center", va="center", zorder=10, bbox=dict(boxstyle="round,pad=0.25", fc="white", ec=ROJO, lw=0.5))
         else:
@@ -348,6 +384,12 @@ def A03():
              ("13  Dominadas asistidas", "Pasa entre el hip thrust y la prensa, frente a la recepción.", "Equipo esbelto (1.15 m): deja 1.53 m de hall. Techo libre 2.62 m."),
              ("Recepción y lockers", "Mostrador junto a la llegada de escalera; 12 lockers a su espalda.", "Control de ingreso, cobro y guardado sin invadir la sala."),
              ("Zona funcional", "Grass sintético 2.40 x 2.20 m al centro de la sala este.", "Calentamiento y estiramiento; no existía en el plano base.")]
+    if B:
+        filas = [("14–17  Cintas y bicicletas", "2 trotadoras y 2 bicicletas en la esquina del lado mercado, frente a un ventanal.", "Es donde el techo es más alto (2.73 m); cinta 1 sobre la viga del eje 6 y baños a un paso."),
+                 ("12  Press plano olímpico", "Pasa al centro de la sala este, donde estaba la zona funcional.", "El peso libre queda reunido: mancuernas, bancos y press, con las barras libres en ambos extremos."),
+                 ("13  Dominadas asistidas", "Pasa al muro del fondo, sobre la viga del eje 2.", "Deja su esquina a las bicicletas. Techo libre de 2.43 m sobre un equipo de 2.23 m."),
+                 ("2 y 3  Porta barras y tríceps", "El tríceps se corre 1.00 m; el porta barras pasa entre extensión y aductor.", "Hacen sitio a las dominadas en el muro del fondo."),
+                 ("Lo que se cede", "Se elimina la zona funcional de grass y el mostrador baja de 1.50 a 1.20 m.", "Es el costo de sumar cuatro equipos sin retirar ninguno: la ocupación sube de 38 % a 45 %.")]
     tabla(mk, 232, 262, ["Elemento", "Cambio", "Por qué"], filas, [28, 54, 0], alto=0.1, tam=0.1)
     # tabla manual con texto ajustado (columna derecha)
     x, y = 232, 262
@@ -376,9 +418,9 @@ def A04():
     planta_base(ax, ejes=False); dibujar_recepcion(ax); dibujar_maquinas(ax, alpha=0.12)
     R = D.RECEPCION; mo, lo, pa, ba = R["mostrador"], R["lockers"], R["panel_marca"], R["banca"]
     cota(ax, (mo[2], mo[1]), (mo[2], mo[3]), -0.28); cota(ax, (mo[0], mo[3]), (mo[2], mo[3]), 0.22)
-    cota(ax, (lo[0], lo[1]), (lo[0], lo[3]), 0.25); cota(ax, (lo[0], lo[3]), (pa[2], lo[3]), 0.2); cota(ax, (pa[2], 3.72), (mo[0], 3.72), 0.22)
+    cota(ax, (lo[0], lo[1]), (lo[0], lo[3]), 0.25); cota(ax, (lo[0], lo[3]), (pa[2], lo[3]), 0.2); cota(ax, (pa[2], mo[3]), (mo[0], mo[3]), 0.22 if not B else 0.45)
     cota(ax, (ba[0], ba[3]), (ba[2], ba[3]), 0.2); cota(ax, (D.X_VANO0, 2.3), (D.X_VANO1, 2.3), 0.0, None, 5.4, ROJO)
-    cota(ax, (1.63, 4.1), (lo[0], 4.1), 0.0, None, 5.4, ROJO); cota(ax, (2.2, 2.05), (2.2, 4.52), 0.0, None, 5.4, ROJO)
+    cota(ax, (1.63, 4.1 if not B else 3.05), (lo[0], 4.1 if not B else 3.05), 0.0, None, 5.4, ROJO); cota(ax, (2.2, 2.05), (2.2, 4.52 if not B else 3.25), 0.0, None, 5.4, ROJO)
     for (x, y), t in [((5.56, 2.36), "estante de productos"), ((7.84, 2.35), "dispensador\nde agua"), ((1.2, 3.62), "celosía de listones h = 2.20"), ((4.3, 1.75), "muro de luz (policarbonato opal)")]:
         ax.text(x, y, t, fontsize=4.6, ha="center", va="center", color="#3a3c41", zorder=12, bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.85))
     for t in ax.texts:
@@ -389,15 +431,16 @@ def A04():
     ex.set_ylim(0.15, -2.55)   # z hacia arriba = negativo
     mk.text(16, A3[1] - 155, "ELEVACIÓN DESDE EL INGRESO (mirando al lado mercado)  1 / 25", fontsize=8, fontweight="bold")
     ex.plot([2.0, 4.3], [0, 0], color=TINTA, lw=1.0)
+    y1 = mo[3]; ym = (2.22 + y1) / 2; Lm = y1 - 2.22
     rect(ex, (2.22, -2.40, 3.72, -1.0), fc="#eef6f8", ec=GRIS, lw=0.5, hatch="||"); rect(ex, (2.07, -1.0, 2.22, 0), fc="white", ec=TINTA, lw=0.6, hatch="////")
-    rect(ex, (2.22, -2.30, 3.72, 0), fc="#17181b", ec=TINTA, lw=0.8)
-    ex.text(2.97, -1.55, "AZOTEA", color="white", fontsize=13, fontweight="black", ha="center"); ex.text(2.97, -1.15, "GYM", color=ROJO, fontsize=18, fontweight="black", ha="center")
-    ex.text(2.97, -0.98, "ENTRENA EN LAS ALTURAS", color="#c9cbd0", fontsize=4.2, ha="center")
-    rect(ex, (2.22, -1.05, 3.76, -1.01), fc=TINTA, ec=TINTA); rect(ex, (2.24, -1.01, 3.72, -0.08), fc="#c9925a", ec=TINTA, lw=0.6)
-    for i in range(21):
+    rect(ex, (2.22, -2.30, y1, 0), fc="#17181b", ec=TINTA, lw=0.8)
+    ex.text(ym, -1.55, "AZOTEA", color="white", fontsize=13 if Lm > 1.3 else 10.5, fontweight="black", ha="center"); ex.text(ym, -1.15, "GYM", color=ROJO, fontsize=18 if Lm > 1.3 else 14.5, fontweight="black", ha="center")
+    ex.text(ym, -0.98 if Lm > 1.3 else -1.08, "ENTRENA EN LAS ALTURAS", color="#c9cbd0", fontsize=4.2 if Lm > 1.3 else 3.4, ha="center")
+    rect(ex, (2.22, -1.05, y1 + 0.04, -1.01), fc=TINTA, ec=TINTA); rect(ex, (2.24, -1.01, y1, -0.08), fc="#c9925a", ec=TINTA, lw=0.6)
+    for i in range(int((y1 - 2.24) / 0.07) + 1):
         ex.plot([2.24 + i * 0.07, 2.24 + i * 0.07], [-1.01, -0.08], color="#7b5630", lw=0.4)
-    rect(ex, (2.24, -0.08, 3.72, 0), fc="#17181b", ec=TINTA)
-    cota(ex, (3.72, 0), (3.72, -1.05), 0.2, "1.05"); cota(ex, (2.22, 0), (2.22, -2.30), -0.25, "2.30"); cota(ex, (2.22, 0.0), (3.72, 0.0), -0.12, "1.50")
+    rect(ex, (2.24, -0.08, y1, 0), fc="#17181b", ec=TINTA)
+    cota(ex, (y1, 0), (y1, -1.05), 0.2, "1.05"); cota(ex, (2.22, 0), (2.22, -2.30), -0.25, "2.30"); cota(ex, (2.22, 0.0), (y1, 0.0), -0.12, "%.2f" % Lm)
     ex.text(4.0, -2.15, "muro de luz\n+1.00 a +2.40", fontsize=4.6, ha="center", color="#3a3c41")
     # elevación de lockers
     el = eje(fig, 130, 160, (2.0, 4.0), (-2.55, 0.15), 25); el.set_ylim(0.15, -2.55)
@@ -414,8 +457,8 @@ def A04():
     # especificaciones
     x = 238
     mk.text(x, 272, "ESPECIFICACIONES", fontsize=8.5, fontweight="bold", va="center")
-    esp = [("Mostrador", "1.50 x 0.50 m, alto 1.05 m. Mesa de trabajo interior a 0.75 m. Zócalo con tira LED roja y luz blanca bajo el tablero."),
-           ("Panel de marca", "1.50 x 2.30 m, visible apenas se sale de la escalera. Logo «Azotea Gym» retroiluminado."),
+    esp = [("Mostrador", "%.2f x 0.50 m, alto 1.05 m. Mesa de trabajo interior a 0.75 m. Zócalo con tira LED roja y luz blanca bajo el tablero." % Lm),
+           ("Panel de marca", "%.2f x 2.30 m, visible apenas se sale de la escalera. Logo «Azotea Gym» retroiluminado." % Lm),
            ("Lockers", "12 casilleros metálicos de 0.30 x 0.60 x 0.42 m con candado propio del socio, espalda con espalda con el panel."),
            ("Banca", "0.80 x 0.38 m, listones de madera sobre estructura de tubo 40 x 40."),
            ("Muro de luz", "El muro sur del tragaluz E y de la escalera se completa con policarbonato opal hasta +2.40: protege la caída, deja pasar la luz y no tapa el tragaluz."),
@@ -465,6 +508,10 @@ def A05():
             ax.text((r[0] + r[2]) / 2, -m["alto"] / 2, "%s\nh = %.2f" % (m["nombre"].replace(" + ", "\n+ ").replace(" olímpic", "\nolímpic"), m["alto"]), fontsize=4.4, ha="center", va="center")
             if m["alto"] > 2.0:
                 h = D.altura_techo(m["c"][0]); ax.text((r[0] + r[2]) / 2, -m["alto"] - 0.09, "libre %.2f" % (h - m["alto"]), fontsize=4.4, ha="center", color=ROJO)
+            if m["tipo"] == "cinta" and m["id"] == "M14":
+                xc = (r[0] + r[2]) / 2 + 0.55; h = D.altura_techo(xc)
+                ax.add_patch(Circle((xc, -2.0), 0.11, fc="none", ec=ROJO, lw=0.6)); ax.plot([xc, xc], [-1.89, -1.0], color=ROJO, lw=0.6); ax.plot([xc - 0.18, xc, xc + 0.18], [-0.25, -1.0, -0.25], color=ROJO, lw=0.6)
+                ax.text(xc, -2.24, "corredor 1.85 m\nlibre %.2f" % (h - 2.2), fontsize=4.4, ha="center", color=ROJO)
     ax.add_patch(Rectangle((0.0, -D.H_BANO), 0.15, D.H_BANO, fc="#3a3c41", ec="none"))
     # persona de referencia
     ax.add_patch(Circle((9.5, -1.6), 0.11, fc="none", ec=GRIS, lw=0.6)); ax.plot([9.5, 9.5], [-1.49, -0.8], color=GRIS, lw=0.6); ax.plot([9.3, 9.5, 9.7], [0, -0.8, 0], color=GRIS, lw=0.6); ax.plot([9.25, 9.75], [-1.3, -1.3], color=GRIS, lw=0.6)
@@ -486,16 +533,23 @@ def A05():
     bx.add_patch(Rectangle((D.Y_ESC1 + 0.05, -2.4), 0.05, 1.4, fc="#eef6f8", ec="#39a0c8", lw=0.6)); bx.text(1.1, -1.6, "vacío de\nescalera", fontsize=4.6, ha="center", color=GRIS)
     bx.text(D.Y_ESC1 + 0.07, -2.52, "muro de luz", fontsize=4.4, ha="center", color="#1f7fa8")
     R = D.RECEPCION
-    bx.add_patch(Rectangle((R["mostrador"][1], -1.05), R["mostrador"][3] - R["mostrador"][1], 1.05, fc="#c9925a", ec=TINTA, lw=0.6)); bx.text(2.97, -0.5, "mostrador\nh = 1.05", fontsize=4.6, ha="center")
-    bx.add_patch(Rectangle((R["panel_marca"][1], -2.3), 1.5, 1.22, fc="#17181b", ec=TINTA, lw=0.6)); bx.text(2.97, -1.7, "panel de marca\nh = 2.30", fontsize=4.6, ha="center", color="white")
-    m13 = next(m for m in D.MAQUINAS if m["id"] == "M13"); r = D.rect_maquina(m13)
-    bx.add_patch(FancyBboxPatch((r[1], -m13["alto"]), r[3] - r[1], m13["alto"], boxstyle="round,pad=0,rounding_size=0.04", fc=COL_ZONA["tren_superior"], alpha=0.35, ec=TINTA, lw=0.6))
-    bx.text((r[1] + r[3]) / 2, -1.1, "dominadas\nh = 2.23", fontsize=4.6, ha="center")
+    bx.add_patch(Rectangle((R["mostrador"][1], -1.05), R["mostrador"][3] - R["mostrador"][1], 1.05, fc="#c9925a", ec=TINTA, lw=0.6)); bx.text((R["mostrador"][1] + R["mostrador"][3]) / 2, -0.5, "mostrador\nh = 1.05", fontsize=4.6, ha="center")
+    Lp = R["panel_marca"][3] - R["panel_marca"][1]; xm = R["panel_marca"][1] + Lp / 2
+    bx.add_patch(Rectangle((R["panel_marca"][1], -2.3), Lp, 1.22, fc="#17181b", ec=TINTA, lw=0.6)); bx.text(xm, -1.7, "panel de marca\nh = 2.30", fontsize=4.6, ha="center", color="white")
+    m13 = next(m for m in D.MAQUINAS if m["id"] == ("M11" if B else "M13")); r = D.rect_maquina(m13)
+    bx.add_patch(FancyBboxPatch((r[1], -m13["alto"]), r[3] - r[1], m13["alto"], boxstyle="round,pad=0,rounding_size=0.04", fc=COL_ZONA[m13["zona"]], alpha=0.35, ec=TINTA, lw=0.6))
+    bx.text((r[1] + r[3]) / 2, -1.1 if not B else -0.75, ("hip thrust\nh = 0.50" if B else "dominadas\nh = 2.23"), fontsize=4.6, ha="center")
     cota(bx, (R["mostrador"][3], -0.25), (r[1], -0.25), 0.0, None, 5.2, ROJO); cota(bx, (D.W + 0.3, 0), (D.W + 0.3, -h), -0.2, "%.2f" % h, 5)
     bx.add_patch(Rectangle((D.W - 0.1, -2.2), 0.03, 1.2, fc="#eef6f8", ec=GRIS, lw=0.5))
     # cuadro de alturas
     filas = [(m["nombre"], m["alto"], round(D.altura_techo(m["c"][0]), 2), round(D.altura_techo(m["c"][0]) - m["alto"], 2)) for m in sorted(D.MAQUINAS, key=lambda q: -q["alto"])[:8]]
     tabla(mk, 200, 170, ["Equipo", "Alto (m)", "Techo libre (m)", "Holgura (m)"], filas, [64, 22, 30, 26], alto=5.2, titulo="ALTURA DE LOS EQUIPOS MÁS ALTOS FRENTE AL TECHO")
+    if B:
+        mk.text(200, 114, _envolver("Las cintas de correr quedan en el lado más alto del techo: 2.73 m libres bajo cercha. Con la plataforma a 0.25 m, un corredor de 1.85 m deja 0.53 m sobre la cabeza. "
+                                    "En el lado calle (2.40 m) esa holgura bajaría a 0.20 m: por eso el cardio va en la esquina del lado mercado.", 100), fontsize=6.2, va="top", linespacing=1.35)
+        mk.text(200, 92, _envolver("Las dominadas (2.23 m) pasan al muro del fondo, donde hay 2.43 m bajo cercha y unos 2.80 m hasta la calamina entre cerchas. El crossover (2.30 m) no se mueve: "
+                                   "confirmar 2.35 m o más bajo la cercha del eje 2.", 100), fontsize=6.2, va="top", linespacing=1.35)
+        return fig
     mk.text(200, 114, _envolver("El crossover (2.30 m) queda entre los ejes 3 y 2, donde la cercha está a 2.48 m: holgura de 18 cm. Si en obra la altura real bajo la cercha del eje 2 fuera menor de 2.35 m, "
                                "pedir el crossover con altura reducida (el fabricante personaliza medidas) o correrlo hacia el eje 3.", 100), fontsize=6.2, va="top", linespacing=1.35)
     mk.text(200, 90, _envolver("En las dominadas la cabeza del usuario sube por encima de la barra (≈ 2.45 m): se ubican entre cerchas secundarias, donde hay 2.62 m bajo cercha y ≈ 3.00 m hasta la calamina.", 100), fontsize=6.2, va="top", linespacing=1.35)
@@ -508,10 +562,12 @@ def _area_poligono(p):
 
 def metrados():
     ar = D.areas()
-    vin = next(p for p in D.PISOS if p["id"] == "vinilico"); a_vin = _area_poligono(vin["poligono"]) - 0.5 * 1.5 - 0.42 * 1.2
+    R = D.RECEPCION; huella = lambda r: (r[2] - r[0]) * (r[3] - r[1])
+    vin = next(p for p in D.PISOS if p["id"] == "vinilico"); a_vin = _area_poligono(vin["poligono"]) - huella(R["mostrador"]) - huella(R["lockers"])
     pl = next(p for p in D.PISOS if p["id"] == "caucho_pl")["rect"]; a_pl = (pl[2] - pl[0]) * (pl[3] - pl[1])
-    zf = D.ZONA_FUNCIONAL; a_gr = (zf[2] - zf[0]) * (zf[3] - zf[1])
-    a_c15 = ar["sala"] - a_vin - a_pl - a_gr
+    zf = D.ZONA_FUNCIONAL; a_gr = (zf[2] - zf[0]) * (zf[3] - zf[1]) if zf else 0.0
+    a_car = sum(huella(p["rect"]) for p in D.PISOS if p["id"] == "caucho_cardio")
+    a_c15 = ar["sala"] - a_vin - a_pl - a_gr - a_car
     cer = {}
     for x0, y0, x1, y1, tipo in D.CERRAMIENTO:
         Lg = math.hypot(x1 - x0, y1 - y0); xm = (x0 + x1) / 2
@@ -522,7 +578,7 @@ def metrados():
             cer["lamas"] = cer.get("lamas", 0) + Lg * max(0.1, D.altura_techo(xm) - 2.2)
     cel = sum(math.hypot(c[2] - c[0], c[3] - c[1]) * c[4] for c in D.CELOSIAS) + 1.39 * 1.3
     esp = sum(b - a for a, b in D.ESPEJOS) * 1.8
-    return {"vinilico": round(a_vin, 1), "caucho_pl": round(a_pl, 1), "grass": round(a_gr, 1), "caucho15": round(a_c15, 1),
+    return {"vinilico": round(a_vin, 1), "caucho_pl": round(a_pl, 1), "grass": round(a_gr, 1), "caucho_cardio": round(a_car, 1), "caucho15": round(a_c15, 1),
             "cerramiento": {k: round(v, 1) for k, v in cer.items()}, "celosia": round(cel, 1), "espejos": round(esp, 1),
             "pintura": round((2 * (D.L + D.W) - 4.0) * 1.0 + 14.0, 0)}
 
@@ -537,7 +593,7 @@ def A06():
     planta_base(ax, textos=False)
     ax.add_patch(Polygon(cont, closed=True, fc="#c9cbd0", ec="none", zorder=0.4, hatch=".."))
     for p in D.PISOS:
-        if p["id"] == "caucho_pl":
+        if p["id"] in ("caucho_pl", "caucho_cardio"):
             rect(ax, p["rect"], fc="#e8b9b9", ec=ROJO, lw=0.6, zorder=0.5, hatch="..")
         if p["id"] == "vinilico":
             ax.add_patch(Polygon(p["poligono"], closed=True, fc="#f0d9b0", ec="#a8763e", lw=0.6, zorder=0.6, hatch="---"))
@@ -561,11 +617,15 @@ def A06():
         ax.plot([x0, x1], [y0, y1], color="#a8763e", lw=2.0, zorder=9)
     kw = dict(fontsize=5.2, ha="center", va="center", zorder=12, bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.9))
     ax.text(10.0, 4.75, "CAUCHO 15 mm  %.1f m²" % me["caucho15"], **kw); ax.text(9.9, 1.25, "CAUCHO 25 mm  %.1f m²" % me["caucho_pl"], **dict(kw, color=ROJO))
-    ax.text(3.2, 3.2, "VINÍLICO SPC  %.1f m²" % me["vinilico"], **dict(kw, color="#7b5630")); zf = D.ZONA_FUNCIONAL; ax.text((zf[0] + zf[2]) / 2, (zf[1] + zf[3]) / 2, "GRASS  %.1f m²" % me["grass"], **dict(kw, color="#2f6d2c"))
+    ax.text(3.2, 3.2, "VINÍLICO SPC  %.1f m²" % me["vinilico"], **dict(kw, color="#7b5630")); zf = D.ZONA_FUNCIONAL
+    if zf:
+        ax.text((zf[0] + zf[2]) / 2, (zf[1] + zf[3]) / 2, "GRASS  %.1f m²" % me["grass"], **dict(kw, color="#2f6d2c"))
+    if me["caucho_cardio"]:
+        ax.text(2.98, 3.72, "CAUCHO 25 mm (cintas)  %.1f m²" % me["caucho_cardio"], **dict(kw, color=ROJO))
     c = me["cerramiento"]
     filas = [("Caucho reciclado 15 mm en losetas de 1 x 1 m", "Sala de máquinas", "%.1f m²" % me["caucho15"]), ("Caucho reciclado 25 mm", "Peso libre (mancuernas y bancos)", "%.1f m²" % me["caucho_pl"]),
-             ("Grass sintético deportivo 12 mm", "Zona funcional y estiramiento", "%.1f m²" % me["grass"]), ("Piso vinílico SPC tono madera", "Recepción y vestíbulo de servicios", "%.1f m²" % me["vinilico"]),
-             ("Policarbonato alveolar 8 mm + tubo 50 x 50", "Lado B, lado mercado y fondo (escalera)", "%.1f m²" % c.get("policarbonato", 0)), ("Ventanal transparente (policarbonato compacto o vidrio templado)", "Lado calle", "%.1f m²" % c.get("ventanal", 0)),
+             (("Caucho reciclado 25 mm bajo cintas (antivibración)", "Zona de cardio", "%.1f m²" % me["caucho_cardio"]) if B else ("Grass sintético deportivo 12 mm", "Zona funcional y estiramiento", "%.1f m²" % me["grass"])), ("Piso vinílico SPC tono madera", "Recepción y vestíbulo de servicios", "%.1f m²" % me["vinilico"]),
+             ("Policarbonato alveolar 8 mm + tubo 50 x 50", "Lado B, lado mercado y fondo (escalera)", "%.1f m²" % c.get("policarbonato", 0)), ("Ventanal transparente (policarbonato compacto o vidrio templado)", "Lado calle y esquina de cardio" if B else "Lado calle", "%.1f m²" % c.get("ventanal", 0)),
              ("Panel de fibrocemento 8 mm (lleva los espejos)", "Fondo, zona de peso libre", "%.1f m²" % c.get("panel_espejo", 0)), ("Lamas metálicas de ventilación", "Franja superior de todo el perímetro", "%.1f m²" % c.get("lamas", 0)),
              ("Muro de luz: policarbonato opal 8 mm", "Tragaluz E y escalera hacia la sala", "%.1f m²" % c.get("muro_luz", 0)), ("Espejo 4 mm con lámina de seguridad sobre tablero", "Peso libre: 4.00 x 1.80 m", "%.1f m²" % me["espejos"]),
              ("Celosía de listones de madera 2\" x 1\"", "Tanque, tragaluz SO y lavadero", "%.1f m²" % me["celosia"]), ("Pintura látex gris oscuro / esmalte negro en metal", "Parapetos, columnas y carpintería", "%.0f m²" % me["pintura"])]
@@ -603,9 +663,13 @@ def IE01():
     filas = [("C-1  Alumbrado sala este", "%d luminarias LED 40 W" % 12, 12 * 40, "2 x 2.5 mm² — ITM 16 A"), ("C-2  Alumbrado sala oeste y recepción", "%d luminarias LED 40 W + tiras LED" % (n - 12), (n - 12) * 40 + 120, "2 x 2.5 mm² — ITM 16 A"),
              ("C-3  Tomacorrientes", "%d puntos dobles con tierra" % len(D.TOMACORRIENTES), 1500, "2 x 4 mm² + T — ITM 20 A + ID 30 mA"), ("C-4  Ventiladores", "%d ventiladores de pared 20\"" % len(D.VENTILADORES), len(D.VENTILADORES) * 120, "2 x 2.5 mm² + T — ITM 16 A"),
              ("C-5  Emergencia y sonido", "3 luces de emergencia + equipo de sonido", 200, "2 x 2.5 mm² — ITM 16 A")]
+    if B:
+        filas[2] = ("C-3  Tomacorrientes", "%d puntos dobles con tierra" % (len(D.TOMACORRIENTES) - 2), 1500, "2 x 4 mm² + T — ITM 20 A + ID 30 mA")
+        filas += [("C-6  Cinta de correr 1 (circuito propio)", "Trotadora 3 HP, tomacorriente dedicado", 2200, "2 x 4 mm² + T — ITM 20 A + ID 30 mA"),
+                  ("C-7  Cinta de correr 2 (circuito propio)", "Trotadora 3 HP, tomacorriente dedicado", 2200, "2 x 4 mm² + T — ITM 20 A + ID 30 mA")]
     yf = tabla(mk, 14, 94, ["Circuito", "Cargas", "Potencia (W)", "Conductor y protección"], filas, [62, 68, 24, 60], alto=5.2, titulo="CUADRO DE CARGAS (referencial)")
     tot = sum(f[2] for f in filas)
-    mk.text(14, yf - 5, "Potencia instalada ≈ {:,} W  ·  demanda máxima estimada ≈ {:,} W  ·  alimentador monofásico 220 V, 2 x 6 mm² + T".format(tot, int(tot * 0.8)), fontsize=6.0, fontweight="bold")
+    mk.text(14, yf - 5, "Potencia instalada ≈ {:,} W  ·  demanda máxima estimada ≈ {:,} W  ·  alimentador monofásico 220 V, {}".format(tot, int(tot * 0.8), "2 x 10 mm² + T (confirmar potencia contratada)" if B else "2 x 6 mm² + T"), fontsize=6.0, fontweight="bold")
     mk.text(14, yf - 13, _envolver("Iluminación: %d luminarias x 4 000 lm sobre %.0f m² ≈ %d lux medios (recomendado para gimnasios: 300 lux). De día, la calamina translúcida sobre los tragaluces y el policarbonato del perímetro permiten apagar la mitad."
                                   % (n, D.areas()["sala"], n * 4000 * 0.55 / D.areas()["sala"]), 150), fontsize=5.8, va="top", linespacing=1.35)
     x2 = 240
@@ -619,7 +683,8 @@ def IE01():
 def E01():
     fig, mk = nueva("E-01", "Cargas sobre la losa", "1 / 50",
                     ["Lámina de coordinación: NO reemplaza la evaluación estructural.", "Norma E.020: sobrecarga de diseño para gimnasios 400 kgf/m². Una losa de vivienda suele estar diseñada para 200 kgf/m².",
-                     "Antes de comprar: evaluación de la losa y vigas del último techo por ingeniero civil colegiado.", "Prohibido soltar pesas; peso muerto solo sobre plataforma amortiguada."])
+                     "Antes de comprar: evaluación de la losa y vigas del último techo por ingeniero civil colegiado.", "Prohibido soltar pesas; peso muerto solo sobre plataforma amortiguada."]
+                    + (["Cintas de correr: carga dinámica (impacto ≈ 2.5 veces el peso del corredor) y vibración. Van con base antivibratoria; la cinta 1 queda sobre la viga del eje 6."] if B else []))
     ax = eje(fig, 12, 14, XL, YL, 50)
     planta_base(ax, textos=False, suave=True)
     for a, b in D.VIGAS_X:
@@ -637,7 +702,7 @@ def E01():
         rect(ax, r, fc=col, ec=TINTA, lw=0.6, alpha=0.55, zorder=6)
         ax.text(m["c"][0], m["c"][1], "%d\n%d kg" % (int(m["id"][1:]), m["peso_kg"]), fontsize=4.6, ha="center", va="center", zorder=8, fontweight="bold")
     filas = [(int(c[0][1:]), c[1], c[2], c[3], c[4], c[5]) for c in D.cargas()]
-    yf = tabla(mk, 14, 94, ["N.º", "Equipo", "Peso + carga (kg)", "Con usuario (kg)", "Área de reparto (m²)", "kg/m²"], filas, [9, 58, 30, 28, 32, 16], alto=4.5, tam=5.3, titulo="CARGA POR EQUIPO (pesos estimados; confirmar con el fabricante)")
+    yf = tabla(mk, 14, 94, ["N.º", "Equipo", "Peso + carga (kg)", "Con usuario (kg)", "Área de reparto (m²)", "kg/m²"], filas, [9, 58, 30, 28, 32, 16], alto=4.1 if B else 4.5, tam=5.0 if B else 5.3, titulo="CARGA POR EQUIPO (pesos estimados; confirmar con el fabricante)")
     tot = sum(c[2] for c in D.cargas()); ar = D.areas()
     disc = 300 + 180
     prom = (tot + ar["aforo"] * 80 + ar["sala"] * 20) / ar["sala"]
@@ -688,7 +753,7 @@ LAMINAS = [("A-01", A01), ("A-02", A02), ("A-03", A03), ("A-04", A04), ("A-05", 
 
 def generar(solo=None):
     os.makedirs(os.path.join(SALIDA, "vistas_previas"), exist_ok=True)
-    ruta = os.path.join(SALIDA, "Planos_Azotea_Gym.pdf")
+    ruta = os.path.join(SALIDA, "Planos_Azotea_Gym%s.pdf" % D.SUFIJO)
     with PdfPages(ruta) as pdf:
         for cod, f in LAMINAS:
             if solo and cod not in solo:
